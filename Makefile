@@ -81,9 +81,10 @@ endif
 # or     va.b-nn-gxxxxxxx
 # or     va.b-nnn-gxxxxxxx
 # or     ...
+# append -dirty if repo contains uncommitted changes
 
 ifeq ($(VERSION),)
-  VERSION="$(PROJECT)_$(shell git describe --tags --long)"
+  VERSION="$(PROJECT)_$(shell git describe --long --dirty)"
 endif
 
 ##############################################################################
@@ -308,25 +309,89 @@ RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC
 include $(RULESPATH)/rules.mk
 #include $(CHIBIOS)/memory.mk
 
-clean:
-	rm -f -rf build/$(PROJECT).* build/lst/*.* build/obj/*.*
 
-flash: build/$(PROJECT).bin
-	-@printf "reset dfu\r" >/dev/cu.usbmodem401 # mac
-	-@printf "reset dfu\r" >/dev/ttyACM0 # linux
-	sleep 2
+# create binaries for both projects with long name tinySA(4)_vx.y-nnn-gxxxxxxx(-dirty).bin, .dfu, .elf, .hex
+.PHONY: release
+release: tinySA tinySA4
+	@ls -l tinySA*
+
+
+# create binaries for tinySA
+.PHONY: tinySA
+tinySA:
+	$(MAKE) clean
+	$(MAKE) -j
+	$(MAKE) binaries
+	@ls -l tinySA*
+
+
+# create binaries for tinySA4
+.PHONY: tinySA4
+tinySA4:
+	$(MAKE) clean
+	TARGET=F303 $(MAKE) -j
+	TARGET=F303 $(MAKE) binaries
+
+
+# remove all created files
+.PHONY: distclean
+distclean: clean
+	-rm -f *.bin *.elf *.hex *.dfu $(HEX2DFU)
+
+
+# build binaries for one project defined by TARGET=F303 for tinySA4, otherwise for tinySA as default
+.PHONY: binaries
+binaries: build/$(PROJECT).elf build/$(PROJECT).bin build/$(PROJECT).hex build/$(PROJECT).dfu
+	-@ln -f build/$(PROJECT).bin $(VERSION).bin
+	-@ln -f build/$(PROJECT).elf $(VERSION).elf
+	-@ln -f build/$(PROJECT).hex $(VERSION).hex
+	-@ln -f build/$(PROJECT).dfu $(VERSION).dfu
+
+
+# the hex -> dfu converter program
+ifeq ($(OS),Windows_NT)
+HEX2DFU = hex2dfu.exe
+else
+HEX2DFU = hex2dfu
+endif
+
+
+# build the hex -> dfu converter program
+$(HEX2DFU): hex2dfu.c
+	-@gcc -DED25519_SUPPORT=0 $< -o $@
+
+
+# convert *.hex to *.dfu
+build/$(PROJECT).dfu: build/$(PROJECT).hex $(HEX2DFU)
+	-@$(HEX2DFU) -i $< -o build/$(PROJECT).dfu
+
+
+ifeq ($(OS),Windows_NT)
+# TODO: define your windows dfu-mode command here
+else
+# switch device to DFU mode, check if linux or mac device is available
+.PHONY: dfumode
+dfumode:
+	-@test -c /dev/cu.usbmodem401 && printf "reset dfu\r" >/dev/cu.usbmodem401 && sleep 2 # mac
+	-@test -c /dev/ttyACM0 && printf "reset dfu\r" >/dev/ttyACM0  && sleep 2 # linux
+endif
+
+
+ifeq ($(OS),Windows_NT)
+# TODO: define your windows flash command here
+else
+# download the *.bin to the device
+.PHONY: flash
+flash:  build/$(PROJECT).bin
 	dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D $<
-
-dfu:	build/$(PROJECT).hex
-	-@#c:/work/dfu/HEX2DFU $< build/$(PROJECT).dfu # win
-	-@hex2dfu -i $< -o build/$(PROJECT).dfu # mac / linux
+endif
 
 
 TAGS: Makefile
 ifeq ($(TARGET),F303)
-	@etags *.[ch] NANOVNA_STM32_F303/*.[ch] $(shell find ChibiOS/os/hal/ports/STM32/STM32F3xx ChibiOS/os -name \*.\[ch\] -print) 
+	@etags *.[ch] NANOVNA_STM32_F303/*.[ch] $(shell find ChibiOS/os/hal/ports/STM32/STM32F3xx ChibiOS/os -name \*.\[ch\] -print)
 else
-	@etags *.[ch] NANOVNA_STM32_F072/*.[ch] $(shell find ChibiOS/os/hal/ports/STM32/STM32F0xx ChibiOS/os -name \*.\[ch\] -print) 
+	@etags *.[ch] NANOVNA_STM32_F072/*.[ch] $(shell find ChibiOS/os/hal/ports/STM32/STM32F0xx ChibiOS/os -name \*.\[ch\] -print)
 endif
 	@ls -l TAGS
 

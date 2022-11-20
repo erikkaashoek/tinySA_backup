@@ -1,7 +1,7 @@
 *~
 .DS_Store
 .dep
-build*
+build
 test
 CMSIS
 python
@@ -9,8 +9,11 @@ python
 *.ipynb
 TAGS
 .emacs-dirvars
-*png
+*.png
 *.bak
+*.new
+*.old
+*.orig
 version.txt
 dorelease.bat
 ChibiOS
@@ -18,3 +21,9 @@ ChibiOS
 .cproject
 Rubbish*
 desktop.ini
+hex2dfu
+hex2dfu.exe
+*.bin
+*.dfu
+*.elf
+*.hex
