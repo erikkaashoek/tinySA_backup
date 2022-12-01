@@ -3,11 +3,23 @@
 # NOTE: Can be overridden externally.
 #
 
-#Build target
-ifeq ($(TARGET),)
-  TARGET = F072
-else
-  TARGET = F303
+# Build target, define with e.g. "TARGET=F303 make"
+# If no TARGET defined use one of these two:
+#  F072 (tinySA aka. TINYSA3 aka. TINYSA_F072)
+#  F303 (tinySA Ultra aka. TINYSA4 aka. TINYSA_F303)
+DEFAULT_TARGET = F072
+
+# target specified?
+ifdef TARGET # must be one of F072 or F303
+ ifneq ($(TARGET),F072)
+  ifneq ($(TARGET),F303)
+   # set default if none of these
+   TARGET = $(DEFAULT_TARGET)
+  endif
+ endif
+else # no target specified
+ # set default one
+ TARGET = $(DEFAULT_TARGET)
 endif
 
 # Compiler options here.
@@ -296,14 +308,8 @@ RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC
 include $(RULESPATH)/rules.mk
 #include $(CHIBIOS)/memory.mk
 
-
-ifeq ($(TARGET),F303)
-clean:
-	rm -f -rf build/tinySA4.* build/lst/*.* build/obj/*.*
-else
 clean:
 	rm -f -rf build/$(PROJECT).* build/lst/*.* build/obj/*.*
-endif
 
 flash: build/$(PROJECT).bin
 	-@printf "reset dfu\r" >/dev/cu.usbmodem401 # mac
