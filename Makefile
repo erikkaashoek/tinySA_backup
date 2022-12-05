@@ -320,8 +320,8 @@ release: tinySA tinySA4
 .PHONY: tinySA
 tinySA:
 	$(MAKE) clean
-	$(MAKE) -j
-	$(MAKE) binaries
+	TARGET=F072 $(MAKE) -j
+	TARGET=F072 $(MAKE) binaries
 	@ls -l tinySA*
 
 
