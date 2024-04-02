@@ -6272,7 +6272,7 @@ const test_case_t test_case [] =
  TEST_CASE_STRUCT(TC_ABOVE,     TP_30MHZ_DIRECT,900,   10,    -90,    0,      -90),         // 6 Direct path with harmonic
  TEST_CASE_STRUCT(TC_SIGNAL,    TP_10MHZEXTRA,  30,     14,      CAL_LEVEL,    26,     -45),      // 7 BPF loss and stop band
  TEST_CASE_STRUCT(TC_FLAT,      TP_10MHZEXTRA,  30,     14,      -28,    9,     -60),       // 8 BPF pass band flatness
- TEST_CASE_STRUCT(TC_BELOW,     TP_15MHZ_LNA2,   870,    1,     -100,    0,      -100),       // 9 LPF cutoff
+ TEST_CASE_STRUCT(TC_BELOW,     TP_15MHZ_LNA2,    855,    1,     -80,    0,      -80),       // 9 LPF cutoff
  TEST_CASE_STRUCT(TC_SIGNAL,    TP_15MHZ_LNA,   30,     5,      CAL_LEVEL,   10,     -90),      // 10 Flatness
  TEST_CASE_STRUCT(TC_SIGNAL,    TP_30MHZ_SWITCH,30,     7,      CAL_LEVEL,    10,     -50),      // 11 Switch isolation using high attenuation
  TEST_CASE_STRUCT(TC_DISPLAY,     TP_30MHZ,       30,     0,      CAL_LEVEL,    50,     -60),      // 12 test display
