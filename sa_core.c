@@ -3060,6 +3060,7 @@ static  const freq_t spur_table[] =                                 // Frequenci
 const int spur_table_size = (sizeof spur_table)/sizeof(freq_t);
 #endif
 #ifdef TINYSA4
+#define static_spur_IF  DEFAULT_IF    // The IF frequency for which the spur table is value
 #define STATIC_SPUR_TABLE_SIZE 56
 static  const freq_t static_spur_table[STATIC_SPUR_TABLE_SIZE] =     // Valid for IF=977.4MHz
 {
@@ -3121,6 +3122,71 @@ static  const freq_t static_spur_table[STATIC_SPUR_TABLE_SIZE] =     // Valid fo
  797216000,
 };
 
+#define CALCULATED_SPUR_TABLE_SIZE = sizeof(static_spur_table)/8
+
+#define static_spur_IF_plus  DEFAULT_IF_PLUS      // The IF frequency for which the spur table is value
+static  const freq_t static_spur_table_plus[] =     // Valid for IF=977.4MHz
+{
+ 5233000,
+ 6300000,
+ 16483000,
+ 16783000,
+ 21300000,
+ 26134000,
+ 36300000,
+ 41134000,
+ 51300000,
+ 66000000,
+ 66300000,
+ 70800000,
+ 72000000,
+ 78000000,
+ 85200000,
+ 101134000,
+ 113134000,
+ 114000000,
+ 115200000,
+ 243881127,
+ 471300000,
+ 487750054,
+ 487762254,
+ 501300000,
+ 508800000,
+ 650974672,
+ 688800000,
+ 699667000,
+ 702865000,
+ 703094000,
+ 703465000,
+ 706616000,
+ 707216000,
+ 708667000,
+ 710366000,
+ 710966000,
+ 711667000,
+ 711667000,
+ 714115000,
+ 714668000,
+ 718465000,
+ 718800000,
+ 721616000,
+ 722216000,
+ 726300000,
+ 729715000,
+ 732865000,
+ 738667000,
+ 740366000,
+ 740966000,
+ 741667000,
+ 747865000,
+ 756667000,
+ 759116000,
+ 793465000,
+ 797216000,
+};
+
+#define STATIC_SPUR_TABLE_SIZE_PLUS sizeof(static_spur_table_plus)/8
+
 #define MAX_DYNAMIC_SPUR_TABLE_SIZE 100
 static  freq_t dynamic_spur_table[MAX_DYNAMIC_SPUR_TABLE_SIZE];       // Frequencies to be calculated
 static int dynamic_spur_table_size = 0;
@@ -3128,6 +3194,7 @@ static int always_use_dynamic_table = false;
 
 static  freq_t *spur_table = (freq_t *)static_spur_table;
 int spur_table_size = STATIC_SPUR_TABLE_SIZE;
+freq_t spur_IF = static_spur_IF;
 
 #endif
 
@@ -3220,8 +3287,15 @@ void fill_spur_table(void)
     return;
   }
   if (actual_rbw_x10 < RBW_FOR_STATIC_TABLE) {         // if less then 1100kHz use static table
-    spur_table = (freq_t *)static_spur_table;
-    spur_table_size = STATIC_SPUR_TABLE_SIZE;
+    if (hwid >= 103) {
+      spur_table = (freq_t *)static_spur_table_plus;
+      spur_table_size = STATIC_SPUR_TABLE_SIZE_PLUS;
+      spur_IF = static_spur_IF_plus;
+    } else {
+      spur_table = (freq_t *)static_spur_table;
+      spur_table_size = STATIC_SPUR_TABLE_SIZE;
+      spur_IF = static_spur_IF;
+    }
     return;
   }
   if (!setting.auto_IF)
@@ -4068,7 +4142,7 @@ again:                                                              // Spur redu
       {
 #ifdef TINYSA4
         if (actual_rbw_x10 < RBW_FOR_STATIC_TABLE && setting.mode == M_LOW && lf > static_spur_table[0] -  RBW_FOR_STATIC_TABLE * 100)
-          local_IF = 977400000; // static spur table IF
+          local_IF = spur_IF; // static spur table IF
         else
           local_IF = config.frequency_IF1;
 #if 0

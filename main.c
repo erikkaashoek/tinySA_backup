@@ -2125,12 +2125,13 @@ typedef struct version_t {
   const uint16_t hwid;
 } version_t;
 
-#define MAX_VERSION_TEXT    3
+#define MAX_VERSION_TEXT    4
 const version_t hw_version_text[MAX_VERSION_TEXT] =
 {
  { 165, 179,    "V0.4.5.1",     1},
  { 180, 195,    "V0.4.5.1.1",   2},
  { 2030, 2050,  "V0.5.2",       102},
+ { 2051, 2500,  "V0.5.3",       103},
 };
 
 uint16_t hwid = 0;
@@ -3043,7 +3044,9 @@ int main(void)
     memcpy(config.correction_value, v5_2_correction_value, sizeof(config.correction_value));
     config.harmonic_level_offset = v5_2_harmonic_level_offset;
     config.harmonic_lna_level_offset = v5_2_harmonic_lna_level_offset;
-    ULTRA_MAX_FREQ      = 7300000000ULL;
+    if (hwid >= 103)
+      config.frequency_IF1 = DEFAULT_IF_PLUS;
+   ULTRA_MAX_FREQ      = 7300000000ULL;
   } else {
     ULTRA_MAX_FREQ      = 5340000000ULL;
   }
