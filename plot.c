@@ -1349,7 +1349,7 @@ draw_all(bool flush)
     draw_all_cells(flush);
 #ifdef __SCROLL__
   //  START_PROFILE
-  if (setting.waterfall)
+  if (setting.waterfall && !(redraw_request & REDRAW_INBETWEEN))
     update_waterfall();
   //  STOP_PROFILE
 #endif

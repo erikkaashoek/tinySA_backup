@@ -5289,7 +5289,7 @@ static bool sweep(bool break_on_operation)
 
       if (local_sweep_time > 10 * ONE_SECOND_TIME) {
         plot_into_index(measured);
-        redraw_request |= REDRAW_CELLS | REDRAW_BATTERY;
+        redraw_request |= REDRAW_CELLS | REDRAW_BATTERY | REDRAW_INBETWEEN;
         // plot trace and other indications as raster
         draw_all(true);  // flush markmap only if scan completed to prevent
       }

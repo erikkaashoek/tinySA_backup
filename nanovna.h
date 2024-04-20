@@ -154,7 +154,7 @@
 #define FREQ_MULTIPLIER 100         // Multiplier of the 30MHz reference to get accurate frequency correction
 #define VARIANT(X,Y) (Y)
 #define DEFAULT_IF  ((freq_t)977400000)
-#define DEFAULT_IF_PLUS  ((freq_t)1070000000)
+#define DEFAULT_IF_PLUS  ((freq_t)1069000000)
 #define DEFAULT_SPUR_OFFSET ((freq_t)(actual_rbw_x10 > 3000 ? 1500000 : 1000000))
 #define STATIC_DEFAULT_SPUR_OFFSET ((freq_t) 1500000)
 #define DEFAULT_MAX_FREQ    ((freq_t) 800000000)
@@ -992,6 +992,7 @@ void markers_reset(void);
 #define REDRAW_BATTERY    (1<<4)
 #define REDRAW_AREA       (1<<5)
 #define REDRAW_TRIGGER    (1<<6)
+#define REDRAW_INBETWEEN  (1<<7)
 extern  uint16_t redraw_request;
 
 /*
