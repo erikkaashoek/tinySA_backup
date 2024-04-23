@@ -614,7 +614,7 @@ extern uint16_t graph_bottom;
 //
 #define CELLOFFSETX 0
 #define AREA_WIDTH_NORMAL  (CELLOFFSETX + WIDTH)
-#define AREA_HEIGHT_NORMAL (              HEIGHT + 1)
+#define AREA_HEIGHT_NORMAL (              HEIGHT)
 
 #define GRID_X_TEXT       (AREA_WIDTH_NORMAL - 7*5)
 

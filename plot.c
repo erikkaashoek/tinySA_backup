@@ -2117,7 +2117,7 @@ static void update_waterfall(void){
   int i;
   int w_width = area_width < WIDTH ? area_width : WIDTH;
 //  START_PROFILE;
-  for (i = CHART_BOTTOM-1; i >=graph_bottom+1; i--) {		// Scroll down
+  for (i = CHART_BOTTOM-1; i >=graph_bottom; i--) {		// Scroll down
     ili9341_read_memory(OFFSETX, i, w_width, 1, spi_buffer);
     ili9341_bulk(OFFSETX, i+1, w_width, 1);
   }
@@ -2188,7 +2188,7 @@ static void update_waterfall(void){
       spi_buffer[j++] = color;
     }
   }
-  ili9341_bulk(OFFSETX, graph_bottom+1, w_width, 1);
+  ili9341_bulk(OFFSETX, graph_bottom, w_width, 1);
 //  STOP_PROFILE;
 }
 #if 0
