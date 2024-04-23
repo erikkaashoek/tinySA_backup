@@ -604,7 +604,7 @@ extern uint16_t graph_bottom;
 #define SD_CARD_START   (LCD_HEIGHT-40-20)
 #define BATTERY_START   (LCD_HEIGHT-40)
 
-#define WIDTH  (LCD_WIDTH - 1 - OFFSETX)
+#define WIDTH  (LCD_WIDTH - OFFSETX)
 #define HEIGHT (GRIDY*NGRIDY)
 
 #define FREQUENCIES_XPOS1 OFFSETX
@@ -613,7 +613,7 @@ extern uint16_t graph_bottom;
 
 //
 #define CELLOFFSETX 0
-#define AREA_WIDTH_NORMAL  (CELLOFFSETX + WIDTH  + 1)
+#define AREA_WIDTH_NORMAL  (CELLOFFSETX + WIDTH)
 #define AREA_HEIGHT_NORMAL (              HEIGHT + 1)
 
 #define GRID_X_TEXT       (AREA_WIDTH_NORMAL - 7*5)
