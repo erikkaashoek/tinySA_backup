@@ -1596,6 +1596,8 @@ extern int si5351_available;
 //#define OP_FREQCHANGE 0x04
 extern volatile uint8_t operation_requested;
 extern volatile uint8_t break_execute;
+extern volatile uint8_t abort_enabled;
+
 
 // lever_mode
 enum lever_mode {

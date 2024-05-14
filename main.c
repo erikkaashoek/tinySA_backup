@@ -244,8 +244,10 @@ static THD_FUNCTION(Thread1, arg)
       do {
         shell_function(shell_nargs - 1, &shell_args[1]);
         shell_function = 0;
+        if (operation_requested == OP_NONE) // Don't prompt if aborted
+          shell_printf(VNA_SHELL_PROMPT_STR);
         // Resume shell thread
-        osalThreadDequeueNextI(&shell_thread, MSG_OK);
+        if (!abort_enabled) osalThreadDequeueNextI(&shell_thread, MSG_OK);
       } while (shell_function);
       if (dirty) {
         if (MODE_OUTPUT(setting.mode))
@@ -1313,10 +1315,10 @@ VNA_SHELL_FUNCTION(cmd_scan)
 do_scan:
   pause_sweep();
   setting.sweep = true;         // prevent abort
-  sweep(false);
+  sweep(true);
   setting.sweep = false;
   // Output data after if set (faster data recive)
-  if (argc == 4) {
+  if (argc == 4 && !operation_requested) {
     uint16_t mask = my_atoui(argv[3]);
     if (mask) {
       for (i = 0; i < sweep_points; i++) {
@@ -2320,6 +2322,7 @@ static const VNAShellCommand commands[] =
     {"hop"         , cmd_hop         , CMD_WAIT_MUTEX},
 #endif
     {"scanraw"     , cmd_scanraw     , CMD_WAIT_MUTEX},
+    {"abort"       , cmd_abort       , 0},
     {"zero"        , cmd_zero        , CMD_WAIT_MUTEX | CMD_RUN_IN_LOAD},   // Will set the scanraw measured value offset (128 or 174)
     {"sweep"       , cmd_sweep       , CMD_WAIT_MUTEX | CMD_RUN_IN_LOAD},
     {"test"        , cmd_test        , 0},
@@ -2698,12 +2701,15 @@ static void VNAShell_executeLine(char *line)
       shell_function = scp->sc_function;
       operation_requested|=OP_CONSOLE;      // this will abort current sweep to give priority to the new request
       // Wait execute command in sweep thread
-      do {
-        osalThreadEnqueueTimeoutS(&shell_thread, TIME_INFINITE);
-      } while (shell_function);
+      if (!abort_enabled && shell_function != 0){
+        do {
+          osalThreadEnqueueTimeoutS(&shell_thread, TIME_INFINITE);
+        } while (shell_function);
+      }
     } else {
       operation_requested = false; // otherwise commands  will be aborted
       scp->sc_function(shell_nargs - 1, &shell_args[1]);
+      shell_printf(VNA_SHELL_PROMPT_STR);
       if (dirty) {
         operation_requested = true;   // ensure output is updated
         if (MODE_OUTPUT(setting.mode))
@@ -2715,6 +2721,7 @@ static void VNAShell_executeLine(char *line)
     return;
   }
   shell_printf("%s?" VNA_SHELL_NEWLINE_STR, shell_args[0]);
+  shell_printf(VNA_SHELL_PROMPT_STR);
 }
 
 void shell_executeCMDLine(char *line) {
@@ -3207,8 +3214,8 @@ int main(void)
       chThdWait(shelltp);
 #else
       shell_printf(VNA_SHELL_NEWLINE_STR"tinySA Shell"VNA_SHELL_NEWLINE_STR);
+      shell_printf(VNA_SHELL_PROMPT_STR);
       do {
-        shell_printf(VNA_SHELL_PROMPT_STR);
         if (VNAShell_readLine(shell_line, VNA_SHELL_MAX_LENGTH))
           VNAShell_executeLine(shell_line);
         else

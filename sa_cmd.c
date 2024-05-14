@@ -1233,6 +1233,23 @@ VNA_SHELL_FUNCTION(cmd_correction)
   shell_printf("updated %d to %D %.1f\r\n", i, config.correction_frequency[m][i], config.correction_value[m][i]);
 }
 
+VNA_SHELL_FUNCTION(cmd_abort)
+{
+  static const char cmd_on_off[] = "off|on";
+  if (argc > 1) {
+    usage:
+    shell_printf("usage: abort [%s]\r\n", cmd_on_off);
+    return;
+  }
+  if (argc == 1) {
+    int i = get_str_index(argv[0], cmd_on_off);
+    if (i < 0)
+      goto usage;
+    abort_enabled = i;
+  } else
+    operation_requested = OP_CONSOLE;
+}
+
 VNA_SHELL_FUNCTION(cmd_scanraw)
 {
   freq_t start, stop;

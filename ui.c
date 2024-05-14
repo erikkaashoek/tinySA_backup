@@ -72,6 +72,7 @@ static uint16_t menu_button_height = MENU_BUTTON_HEIGHT_N(MENU_BUTTON_MIN);
 
 volatile uint8_t operation_requested = OP_NONE;
 volatile uint8_t break_execute = false;
+volatile uint8_t abort_enabled = false;
 
 int8_t previous_marker = MARKER_INVALID;
 
