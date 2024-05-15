@@ -2125,7 +2125,7 @@ static void update_waterfall(void){
   }
   for (i = CHART_BOTTOM-((CHART_BOTTOM-graph_bottom)/WATERFALL_MULTI)*WATERFALL_MULTI-1; i>=graph_bottom; i--) {  // Scroll down remaining lines
 #else
-    for (i = CHART_BOTTOM-1; i >=graph_bottom; i--) {        // Scroll down
+  for (i = CHART_BOTTOM-1; i >=graph_bottom; i--) {        // Scroll down
 #endif
     ili9341_read_memory(OFFSETX, i, w_width, 1, spi_buffer);
     ili9341_bulk(OFFSETX, i+1, w_width, 1);
