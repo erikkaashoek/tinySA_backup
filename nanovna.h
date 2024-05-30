@@ -1750,25 +1750,34 @@ extern const menuitem_t  menu_highoutputmode[];
 extern const menuitem_t  menu_mode[];
 extern void menu_push_submenu(const menuitem_t *submenu);
 
+#ifdef TINYSA4
+#define MAX_BACKUP_SIZE 16
+#define USED_BACKUP_SIZE 6
+#else
+#define MAX_BACKUP_SIZE 5
+#define USED_BACKUP_SIZE 4      // must be equal to sizeof(backup_t)
+#endif
+
+
 typedef struct {
-  freq_t    frequency0, frequency1;
-  uint8_t attenuation;
-  uint8_t reflevel;
-  uint8_t RBW;
-  uint8_t mode;
-  uint8_t checksum;
+  union {
+    uint32_t raw[USED_BACKUP_SIZE];     // checksum must be last byte
+    struct {
+      freq_t  frequency0, frequency1;
+      uint8_t attenuation;
+      uint8_t reflevel;
+      uint8_t RBW;
+      uint8_t mode;
+      int8_t external_gain;
+      uint8_t dummy1,dummy2;
+      uint8_t checksum;
+    } data;
+  };
 } backup_t;
 #pragma pack(pop)
 
 #define backup (*(uint32_t *)0x40002850)   // backup registers 5 * 32 bits
 
-#ifdef TINYSA4
-#define MAX_BACKUP_SIZE 16
-#define USED_BACKUP_SIZE 5
-#else
-#define MAX_BACKUP_SIZE 5
-#define USED_BACKUP_SIZE 3
-#endif
 
 #if USED_BACKUP_SIZE > MAX_BACKUP_SIZE
 #error "backup_t too large"

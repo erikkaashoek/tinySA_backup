@@ -156,36 +156,37 @@ static THD_FUNCTION(Thread1, arg)
 //  START_PROFILE
     if (sweep_mode&(SWEEP_ENABLE|SWEEP_ONCE)) {
       backup_t b;
-      b.frequency0 = setting.frequency0;
-      b.frequency1 = setting.frequency1;
+      b.data.frequency0 = setting.frequency0;
+      b.data.frequency1 = setting.frequency1;
       if (setting.auto_attenuation)
-        b.attenuation = 0;
+        b.data.attenuation = 0;
       else
-        b.attenuation = setting.attenuate_x2+1;
+        b.data.attenuation = setting.attenuate_x2+1;
+      b.data.external_gain = setting.external_gain*2;
       if (setting.auto_reflevel || setting.unit != U_DBM)
-        b.reflevel = 0;
+        b.data.reflevel = 0;
       else
-      b.reflevel = setting.reflevel + 140;
+      b.data.reflevel = setting.reflevel + 140;
       if (setting.rbw_x10 == 0)
-        b.RBW = 0;
+        b.data.RBW = 0;
       else
 #ifdef TINYSA4
-        b.RBW = SI4463_rbw_selected+1;
+        b.data.RBW = SI4463_rbw_selected+1;
 #else
-        b.RBW = SI4432_rbw_selected+1;
+        b.data.RBW = SI4432_rbw_selected+1;
 #endif
-      b.mode = setting.mode;
-      b.checksum = 0;
+      b.data.mode = setting.mode;
+      b.data.checksum = 0;
       uint8_t *c = (uint8_t *)&b;
       int ci = sizeof(backup_t)-1;  // Exclude checksum
       uint8_t checksum = 0x55;
       while (ci--) {
         checksum ^= *c++;
       }
-      b.checksum = checksum;
+      b.data.checksum = checksum;
       uint32_t *f = (uint32_t *)&b;
       uint32_t *t = &backup;
-      int i = USED_BACKUP_SIZE+1;
+      int i = USED_BACKUP_SIZE;
       while (i--)
         *t++ = *f++;
 
@@ -3132,7 +3133,7 @@ int main(void)
     backup_t b;
     uint32_t *f = &backup;
     uint32_t *t = (uint32_t *)&b;
-    int i = USED_BACKUP_SIZE+1;
+    int i = USED_BACKUP_SIZE;
     while (i--)
       *t++ = *f++;
     uint8_t *c = (uint8_t *)&b;
@@ -3141,10 +3142,10 @@ int main(void)
     while (ci--) {
       checksum ^= *c++;
     }
-    if (b.checksum == checksum) {
+    if (b.data.checksum == checksum) {
 #ifdef TINYSA4       // Set mode not working reliably
-      set_mode(b.mode);
-      switch (b.mode) {
+      set_mode(b.data.mode);
+      switch (b.data.mode) {
       case M_LOW:
       case M_HIGH:
         break;
@@ -3158,30 +3159,31 @@ int main(void)
         break;
       }
 #endif
-      if (b.frequency0 != 0 || b.frequency1 != 0) {
-        if (b.mode <= M_HIGH){
-          set_sweep_frequency(ST_START, b.frequency0);
-          set_sweep_frequency(ST_STOP, b.frequency1);
+      set_external_gain(b.data.external_gain/2);
+      if (b.data.frequency0 != 0 || b.data.frequency1 != 0) {
+        if (b.data.mode <= M_HIGH){
+          set_sweep_frequency(ST_START, b.data.frequency0);
+          set_sweep_frequency(ST_STOP, b.data.frequency1);
         } else {
-          set_sweep_frequency(ST_CW, (b.frequency0 + b.frequency1)/2);
-          set_sweep_frequency(ST_SPAN, (b.frequency1 - b.frequency0));
+          set_sweep_frequency(ST_CW, (b.data.frequency0 + b.data.frequency1)/2);
+          set_sweep_frequency(ST_SPAN, (b.data.frequency1 - b.data.frequency0));
           ui_mode_menu();
         }
-        if (b.attenuation == 0) {
+        if (b.data.attenuation == 0) {
           set_auto_attenuation();
         } else {
-          set_attenuation((b.attenuation - 1)/2.0);
+          set_attenuation((b.data.attenuation - 1)/2.0);
         }
-        if (b.reflevel == 0) {
+        if (b.data.reflevel == 0) {
           set_auto_reflevel(true);
         } else {
           set_auto_reflevel(false);
-          user_set_reflevel((float)(b.reflevel-140));
+          user_set_reflevel((float)(b.data.reflevel-140));
         }
-        if (b.RBW == 0) {
+        if (b.data.RBW == 0) {
           setting.rbw_x10 = 0;
         } else {
-          set_RBW(force_rbw(b.RBW-1));
+          set_RBW(force_rbw(b.data.RBW-1));
         }
       }
     }
