@@ -695,7 +695,7 @@ void reset_settings(int m)
 #endif
   setting.frequency_offset = FREQUENCY_SHIFT;
   setting.auto_IF = true;
-  set_external_gain(0.0);  // This also updates the help text!!!!!
+  //set_external_gain(0.0);  // This also updates the help text!!!!!
   //setting.external_gain = 0.0;
   setting.trigger = T_AUTO;
   setting.trigger_direction = T_UP;
@@ -801,7 +801,7 @@ void reset_settings(int m)
   setting.level =  level_max();     // This is the level with above settings.
   markers_reset();
   setting._active_marker = 0;
-  set_external_gain(0.0);  // This also updates the help text!!!!! Must be below level_min and level_max being set
+  //set_external_gain(0.0);  // This also updates the help text!!!!! Must be below level_min and level_max being set
   set_sweep_points(POINTS_COUNT);
   dirty = true;
 }

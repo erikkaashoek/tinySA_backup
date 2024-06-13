@@ -2832,7 +2832,7 @@ static UI_FUNCTION_ADV_CALLBACK(menu_measure_acb)
       TRACE_DISABLE(TRACE_STORED_FLAG);
     }
     set_average(0,AV_OFF);
-    set_external_gain(0.0);
+//    set_external_gain(0.0);
 #ifdef TINYSA4
     set_extra_lna(false);
 #endif
