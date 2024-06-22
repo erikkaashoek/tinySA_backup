@@ -2152,7 +2152,7 @@ static void update_waterfall(void){
   for (i=0; i< sweep_points; i++) {			// Add new topline
     uint16_t color;
 #ifdef _USE_WATERFALL_PALETTE
-    uint16_t y = _PALETTE_ALIGN(256 - graph_bottom + index[i]); // should be always in range 0 - graph_bottom
+    uint16_t y = _PALETTE_ALIGN(255 - graph_bottom + index[i]); // should be always in range 0 - graph_bottom
 //    y = (uint8_t)i;  // for test
     if (y > 255)            // at start the index_y_t table could be empty leading to negative y
       break;
