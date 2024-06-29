@@ -176,7 +176,7 @@ static const uint8_t vcom_string2[] = {
 #endif
 
 /*
- * Serial number string
+ * Serial Number string.
  */
 #define USB_SIZ_STRING_SERIAL (2 + 24)
 static uint8_t vcom_string3[USB_SIZ_STRING_SERIAL] = {
@@ -195,7 +195,6 @@ static const USBDescriptor vcom_strings[] = {
   {sizeof vcom_string3, vcom_string3}
 };
 
-
 /**
   * @brief  Convert Hex 32Bits value into char
   * @param  value: value to convert
@@ -203,8 +202,7 @@ static const USBDescriptor vcom_strings[] = {
   * @param  len: buffer length
   * @retval None
   */
-static void int_to_unicode(uint32_t value, uint8_t *pbuf, uint8_t len)
-{
+static void int_to_unicode(uint32_t value, uint8_t *pbuf, uint8_t len) {
   uint8_t idx = 0;
   for (idx = 0 ; idx < len ; idx ++) {
     if (((value >> 28)) < 0xA) {
@@ -221,11 +219,10 @@ static void int_to_unicode(uint32_t value, uint8_t *pbuf, uint8_t len)
   * @brief  Create the serial number string descriptor
   * @param  None
   * @retval None
-  * inspired by:
+  * format and algorithm inspired by:
   * https://github.com/limbongofficial/STM32_Core-Arduino/blob/master/cores/arduino/stm32/usb/usbd_desc.c#L326-L370
   */
-static void prepare_sernum_str(void)
-{
+static void prepare_sernum_str(void) {
   uint32_t deviceserial0, deviceserial1, deviceserial2;
   deviceserial0 = *(uint32_t *)0x1FFFF7AC;
   deviceserial1 = *(uint32_t *)0x1FFFF7B0;
