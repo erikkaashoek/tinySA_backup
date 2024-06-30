@@ -24,7 +24,7 @@
 #include "nanovna.h"
 
 #pragma GCC push_options
-#pragma GCC optimize ("Os")      // Makes the code just a bit faster, disable during debugging.
+#pragma GCC optimize ("Og")      // Makes the code just a bit faster, disable during debugging.
 
 #ifdef __SCROLL__
 uint16_t _grid_y = (CHART_BOTTOM / NGRIDY);
@@ -2114,19 +2114,20 @@ int display_test(void)
 #endif
 
 static void update_waterfall(void){
-  int i;
+  int i = CHART_BOTTOM-1;
   int w_width = area_width < WIDTH ? area_width : WIDTH;
 //  START_PROFILE;
 #ifdef TINYSA4
 #define WATERFALL_MULTI (SPI_BUFFER_SIZE / WIDTH)
-  for (i = CHART_BOTTOM-WATERFALL_MULTI; i>=graph_bottom; i-=WATERFALL_MULTI) {		// Scroll down WATERFALL_MULTI lines at once
-    ili9341_read_memory(OFFSETX, i, w_width, WATERFALL_MULTI, spi_buffer);
-    ili9341_bulk(OFFSETX, i+1, w_width, WATERFALL_MULTI);
+  if (!auto_capture) {
+    for (i = CHART_BOTTOM-WATERFALL_MULTI; i>=graph_bottom; i-=WATERFALL_MULTI) {		// Scroll down WATERFALL_MULTI lines at once
+      ili9341_read_memory(OFFSETX, i, w_width, WATERFALL_MULTI, spi_buffer);
+      ili9341_bulk(OFFSETX, i+1, w_width, WATERFALL_MULTI);
+    }
+    i = CHART_BOTTOM-((CHART_BOTTOM-graph_bottom)/WATERFALL_MULTI)*WATERFALL_MULTI-1;
   }
-  for (i = CHART_BOTTOM-((CHART_BOTTOM-graph_bottom)/WATERFALL_MULTI)*WATERFALL_MULTI-1; i>=graph_bottom; i--) {  // Scroll down remaining lines
-#else
-  for (i = CHART_BOTTOM-1; i >=graph_bottom; i--) {        // Scroll down
 #endif
+  for (; i >=graph_bottom; i--) {        // Scroll down
     ili9341_read_memory(OFFSETX, i, w_width, 1, spi_buffer);
     ili9341_bulk(OFFSETX, i+1, w_width, 1);
   }
@@ -2243,7 +2244,7 @@ static void update_level_meter(void){
   ili9341_set_foreground(LCD_FG_COLOR);
   int x_max = area_width+OFFSETX;
 #ifdef TINYSA4
-#define BIG_SIZE 3
+  int  BIG_SIZE = (auto_capture?2:4);
 #else
 #define BIG_SIZE 2
 #endif
