@@ -24,7 +24,7 @@
 #include "nanovna.h"
 
 #pragma GCC push_options
-#pragma GCC optimize ("Og")      // Makes the code just a bit faster, disable during debugging.
+#pragma GCC optimize ("Os")      // Makes the code just a bit faster, disable during debugging.
 
 #ifdef __SCROLL__
 uint16_t _grid_y = (CHART_BOTTOM / NGRIDY);

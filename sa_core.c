@@ -7069,6 +7069,7 @@ void self_test(int test)
     goto quit;
   }
 #endif
+  setting.external_gain = 0;                  // Must be 0
 //  set_sweep_points(POINTS_COUNT);
   if (test == 0) {
     if (test_wait ) {
