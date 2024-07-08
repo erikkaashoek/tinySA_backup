@@ -15,10 +15,17 @@
 */
 
 #include "hal.h"
+#include "nanovna.h"
 
 /* Virtual serial port over USB.*/
 SerialUSBDriver SDU1;
 
+enum {
+  STR_LANG_ID = 0,
+  STR_MANUFACTURER,
+  STR_PRODUCT,
+  STR_SERIAL
+};
 /*
  * Endpoints to be used for USBD1.
  */
@@ -176,62 +183,38 @@ static const uint8_t vcom_string2[] = {
 #endif
 
 /*
- * Serial Number string.
- */
-#define USB_SIZ_STRING_SERIAL (2 + 24)
-static uint8_t vcom_string3[USB_SIZ_STRING_SERIAL] = {
- USB_DESC_BYTE(USB_SIZ_STRING_SERIAL), /* bLength.                         */
- USB_DESC_BYTE(USB_DESCRIPTOR_STRING), /* bDescriptorType.                 */
- /* here goes the 12 char string encoded as UTF-16 (one ASCII, one 0x00)   */
-};
-
-/*
  * Strings wrappers array.
  */
 static const USBDescriptor vcom_strings[] = {
   {sizeof vcom_string0, vcom_string0},
   {sizeof vcom_string1, vcom_string1},
-  {sizeof vcom_string2, vcom_string2},
-  {sizeof vcom_string3, vcom_string3}
+  {sizeof vcom_string2, vcom_string2}
 };
 
-/**
-  * @brief  Convert Hex 32Bits value into char
-  * @param  value: value to convert
-  * @param  pbuf: pointer to the buffer
-  * @param  len: buffer length
-  * @retval None
-  */
-static void int_to_unicode(uint32_t value, uint8_t *pbuf, uint8_t len) {
-  uint8_t idx = 0;
-  for (idx = 0 ; idx < len ; idx ++) {
-    if (((value >> 28)) < 0xA) {
-      pbuf[ 2 * idx] = (value >> 28) + '0';
-    } else {
-      pbuf[2 * idx] = (value >> 28) + 'A' - 10;
-    }
-    value = value << 4;
-    pbuf[ 2 * idx + 1] = 0;
+// Use unique serial string generated from MCU id
+#define UID_RADIX                5                 // Radix conversion constant (5 bit, use 0..9 and A..V)
+#define USB_SERIAL_STRING_SIZE  ((64 + UID_RADIX -1) / UID_RADIX)   // Result string size
+USBDescriptor *getSerialStringDescriptor(void) {
+  uint16_t i;
+  uint16_t *buf    = ((uint16_t *)&spi_buffer[ARRAY_COUNT(spi_buffer)]) - ((USB_SERIAL_STRING_SIZE + 3) & ~3); // 32 bit align
+  USBDescriptor *d = ((USBDescriptor *)buf) - 1;
+  uint32_t id0 = *(uint32_t *)0x1FFFF7AC; // MCU id0 address
+  uint32_t id1 = *(uint32_t *)0x1FFFF7B0; // MCU id1 address
+  uint32_t id2 = *(uint32_t *)0x1FFFF7B4; // MCU id2 address
+  uint64_t uid = id1;
+  uid = (id0 + id2) | (uid<<32);          // generate unique 64bit ID
+  // Prepare serial string descriptor from 64 bit ID
+  for(i = 1; i < USB_SERIAL_STRING_SIZE + 1; i++) {
+    uint16_t c = uid & ((1<<UID_RADIX) - 1);
+    buf[i] = c + (c < 0x0A ? '0' : 'A' - 0x0A);
+    uid>>= UID_RADIX;
   }
-}
-
-/**
-  * @brief  Create the serial number string descriptor
-  * @param  None
-  * @retval None
-  * format and algorithm inspired by:
-  * https://github.com/limbongofficial/STM32_Core-Arduino/blob/master/cores/arduino/stm32/usb/usbd_desc.c#L326-L370
-  */
-static void prepare_sernum_str(void) {
-  uint32_t deviceserial0, deviceserial1, deviceserial2;
-  deviceserial0 = *(uint32_t *)0x1FFFF7AC;
-  deviceserial1 = *(uint32_t *)0x1FFFF7B0;
-  deviceserial2 = *(uint32_t *)0x1FFFF7B4;
-  deviceserial0 += deviceserial2;
-  if (deviceserial0 != 0) {
-    int_to_unicode(deviceserial0, &vcom_string3[2], 8);
-    int_to_unicode(deviceserial1, &vcom_string3[18], 4);
-  }
+  uint16_t size = i * sizeof(uint16_t);
+  buf[0] = size | (USB_DESCRIPTOR_STRING << 8);
+  // Generate USBDescriptor structure
+  d->ud_size   = size;
+  d->ud_string = (uint8_t *)buf;
+  return d;
 }
 
 /*
@@ -242,7 +225,6 @@ static const USBDescriptor *get_descriptor(USBDriver *usbp,
                                            uint8_t dtype,
                                            uint8_t dindex,
                                            uint16_t lang) {
-
   (void)usbp;
   (void)lang;
   switch (dtype) {
@@ -251,11 +233,11 @@ static const USBDescriptor *get_descriptor(USBDriver *usbp,
   case USB_DESCRIPTOR_CONFIGURATION:
     return &vcom_configuration_descriptor;
   case USB_DESCRIPTOR_STRING:
-    if (dindex < 4) {
-      if ( dindex == 3 && vcom_string3[2] == 0 ) // not yet done
-        prepare_sernum_str();
+    // send unique USB serial string if need
+    if (dindex == STR_SERIAL)
+      return getSerialStringDescriptor();
+    if (dindex < STR_SERIAL)
       return &vcom_strings[dindex];
-    }
   }
   return NULL;
 }
