@@ -1733,6 +1733,8 @@ void toggle_spur(void)
 #ifdef __HARMONIC__
 void set_harmonic(int h)
 {
+  if (h < 0 || h > 5 || h == 1)
+    return;
   setting.harmonic = h;
 #if 0
   minFreq = 684000000.0;

@@ -1488,7 +1488,7 @@ typedef struct properties {
 
 //sizeof(properties_t) == 0x1200
 
-#define CONFIG_MAGIC  0x434f4e67
+#define CONFIG_MAGIC  0x434f4e68
 #define SETTING_MAGIC 0x434f4e68
 
 extern int16_t lastsaveid;
@@ -1769,7 +1769,7 @@ typedef struct {
       uint8_t RBW;
       uint8_t mode;
       int8_t external_gain;
-      uint8_t dummy1,dummy2;
+      uint8_t harmonic,dummy2;
       uint8_t checksum;
     } data;
   };
@@ -1782,6 +1782,9 @@ typedef struct {
 #if USED_BACKUP_SIZE > MAX_BACKUP_SIZE
 #error "backup_t too large"
 #endif
+//#if sizeof(backup_t) != USED_BACKUP_SIZE  // does not work
+//#error "backup_t size incorrect"
+//#endif
 /*
  * misclinous
  */

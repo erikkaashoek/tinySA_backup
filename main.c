@@ -130,6 +130,8 @@ systime_t last_auto_save = 0;
 
 #ifdef TINYSA4
 static THD_WORKING_AREA(waThread1, 1224);
+systime_t restart_set_time = 0;
+systime_t restart_interval = 0;
 #else
 static THD_WORKING_AREA(waThread1, 768);
 bool has_esd = false;
@@ -169,11 +171,15 @@ static THD_FUNCTION(Thread1, arg)
       b.data.reflevel = setting.reflevel + 140;
       if (setting.rbw_x10 == 0)
         b.data.RBW = 0;
-      else
+      else {
 #ifdef TINYSA4
         b.data.RBW = SI4463_rbw_selected+1;
 #else
         b.data.RBW = SI4432_rbw_selected+1;
+#endif
+      }
+#ifdef TINYSA4
+        b.data.harmonic = setting.harmonic;
 #endif
       b.data.mode = setting.mode;
       b.data.checksum = 0;
@@ -207,6 +213,15 @@ static THD_FUNCTION(Thread1, arg)
           config._mode = old_mode;
         }
 #endif
+#ifdef __USE_RTC__
+        if (restart_set_time) {
+          if ( chVTGetSystemTimeX() - restart_set_time > restart_interval) {
+               chThdSleepMilliseconds(200);
+               NVIC_SystemReset();
+          }
+        }
+#endif
+
 
         if (sweep_once_count>1) {
           sweep_once_count--;
@@ -407,6 +422,22 @@ static int get_str_index(const char *v, const char *list)
   return -1;
 }
 
+#ifdef __USE_RTC__
+VNA_SHELL_FUNCTION(cmd_restart)
+{
+  (void)argc;
+  (void)argv;
+  if (argc == 1) {
+    restart_interval = S2ST(my_atoi(argv[0]));
+    if (restart_interval) {
+      restart_set_time =  chVTGetSystemTimeX();
+      if (restart_set_time == 0)
+        restart_set_time = 1;
+    } else
+      restart_set_time = 0;
+  }
+}
+#endif
 
 
 VNA_SHELL_FUNCTION(cmd_pause)
@@ -2330,6 +2361,7 @@ static const VNAShellCommand commands[] =
     {"touchcal"    , cmd_touchcal    , CMD_WAIT_MUTEX},
     {"touchtest"   , cmd_touchtest   , CMD_WAIT_MUTEX},
     {"pause"       , cmd_pause       , CMD_WAIT_MUTEX | CMD_RUN_IN_LOAD},
+    {"restart"     , cmd_restart     , CMD_WAIT_MUTEX | CMD_RUN_IN_LOAD},
     {"resume"      , cmd_resume      , CMD_WAIT_MUTEX | CMD_RUN_IN_LOAD},
     {"wait"        , cmd_wait        , CMD_RUN_IN_LOAD},                                 // This lets the sweep continue
     {"repeat"      , cmd_repeat      , CMD_RUN_IN_LOAD},
@@ -3158,6 +3190,7 @@ int main(void)
         menu_push_submenu(menu_highoutputmode);
         break;
       }
+      set_harmonic(b.data.harmonic);
 #endif
       set_external_gain(b.data.external_gain/2);
       if (b.data.frequency0 != 0 || b.data.frequency1 != 0) {
