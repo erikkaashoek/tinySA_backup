@@ -1256,7 +1256,7 @@ VNA_SHELL_FUNCTION(cmd_scanraw)
   uint32_t points = sweep_points;
   uint8_t unbuffered = 0;
   if (argc < 2 || argc > 4) {
-    usage_printf("scanraw {start(Hz)} {stop(Hz)} [points] [unbuffered]\r\n");
+    usage_printf("scanraw {start(Hz)} {stop(Hz)} [points] [options]\r\n");
     return;
   }
 
@@ -1280,7 +1280,7 @@ VNA_SHELL_FUNCTION(cmd_scanraw)
   freq_t old_step = setting.frequency_step;
   float f_step = (stop-start)/ points;
   setting.frequency_step = (freq_t)f_step;
-
+again:
   operation_requested = false;
   dirty = true;
 //  adc_stop_analog_watchdog();
@@ -1299,7 +1299,7 @@ VNA_SHELL_FUNCTION(cmd_scanraw)
     buf[idx++] = 'x';
     buf[idx++] = (uint8_t)(val & 0xFF);
     buf[idx++] = (uint8_t)((val>>8) & 0xFF);
-    if (unbuffered || idx >= BUFFER_SIZE - 4) {
+    if ((unbuffered & 1) || idx >= BUFFER_SIZE - 4) {
       streamWrite(shell_stream, buf, idx);
       idx = 0;
     }
@@ -1312,6 +1312,8 @@ VNA_SHELL_FUNCTION(cmd_scanraw)
   buf[idx++] = '}';
   streamWrite(shell_stream, buf, idx);
 //  adc_start_analog_watchdog();
+  if ((unbuffered & 2) && !operation_requested)
+     goto again;
   ili9341_set_background(LCD_BG_COLOR);
   ili9341_fill(OFFSETX, CHART_BOTTOM+1, WIDTH, 1);
   setting.frequency_step = old_step;
