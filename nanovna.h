@@ -138,6 +138,7 @@
 
 
 #ifdef TINYSA3
+typedef uint32_t freq_t;
 #define VARIANT(X,Y) (X)
 #define DEFAULT_IF  433800000
 #define DEFAULT_SPUR_IF 434000000
@@ -151,19 +152,21 @@
 #define HIGH_MAX_FREQ_MHZ   959
 #endif
 #ifdef TINYSA4
+typedef uint64_t freq_t;
 #define FREQ_MULTIPLIER 100         // Multiplier of the 30MHz reference to get accurate frequency correction
 #define VARIANT(X,Y) (Y)
 #define DEFAULT_IF  ((freq_t)977400000)
 #define DEFAULT_IF_PLUS  ((freq_t)1069000000)
+extern uint16_t hw_if;
 #define DEFAULT_SPUR_OFFSET ((freq_t)(actual_rbw_x10 > 3000 ? 1500000 : 1000000))
 #define STATIC_DEFAULT_SPUR_OFFSET ((freq_t) 1500000)
-#define DEFAULT_MAX_FREQ    ((freq_t) 800000000)
+
 #define MAX_LOW_OUTPUT_FREQ ((freq_t)1130000000)
 #define HIGH_MIN_FREQ_MHZ   136// 825
 #define HIGH_MAX_FREQ_MHZ   1130
 #define MINIMUM_DIRECT_FREQ  823000000ULL
-#define DEFAULT_ULTRA_THRESHOLD 700000000ULL
 #define ULTRA_AUTO         10000000000ULL // 10GHz
+
 
 //#define LOW_MAX_FREQ         800000000ULL
 //#define MIN_BELOW_LO         550000000ULL   // not used????
@@ -217,7 +220,6 @@
 extern const char * const trc_channel_name[];
 
 #ifdef TINYSA3
-typedef uint32_t freq_t;
 #define HALF_FREQ 0x80000000UL
  typedef int32_t long_t;
  extern bool has_esd;
@@ -230,9 +232,8 @@ typedef uint32_t freq_t;
  #define CORRECTION_SIZE    3
 #endif
 #ifdef TINYSA4
- typedef uint64_t freq_t;
-#define HALF_FREQ 0x800000000000000ULL
  typedef int64_t long_t;
+#define HALF_FREQ 0x800000000000000ULL
  #define CORRECTION_POINTS  20       // Frequency dependent level correction table entries
  #define CORRECTION_LOW_IN   0
  #define CORRECTION_LNA      1
@@ -252,6 +253,8 @@ typedef uint32_t freq_t;
  extern freq_t MAX_LO_FREQ;
  extern freq_t MAX_ABOVE_IF_FREQ;           // Range to use for below IF
  extern freq_t MIN_BELOW_IF_FREQ;          // Range to use for below IF
+ extern freq_t ULTRA_THRESHOLD;
+ extern freq_t NORMAL_MAX_FREQ;
  extern int max2871;
  extern void set_freq_boundaries(void);
 #endif

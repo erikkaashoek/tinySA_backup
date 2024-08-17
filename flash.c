@@ -239,7 +239,7 @@ caldata_recall(uint16_t id)
   update_rbw();
   sweep_mode = SWEEP_ENABLE;
 #ifdef __ULTRA__
-  ultra_start = (config.ultra_start == ULTRA_AUTO ? DEFAULT_ULTRA_THRESHOLD : config.ultra_start);
+  ultra_start = (config.ultra_start == ULTRA_AUTO ? ULTRA_THRESHOLD : config.ultra_start);
 #endif
 
 //  if (setting.show_stored)

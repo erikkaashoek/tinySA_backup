@@ -114,6 +114,8 @@ freq_t ULTRA_MAX_FREQ;           // Start of harmonic mode
 freq_t MAX_LO_FREQ;
 freq_t MAX_ABOVE_IF_FREQ;           // Range to use for below IF
 freq_t MIN_BELOW_IF_FREQ;          // Range to use for below IF
+freq_t ULTRA_THRESHOLD;
+freq_t NORMAL_MAX_FREQ;
 int max2871;
 #endif
 
@@ -1265,6 +1267,42 @@ const float v5_2_harmonic_lna_level_offset = 0; // should be in correction table
 const float v5_2_harmonic_level_offset = 0; // should be in correction table now -7;        // Depends on where the transition to harmonic is done!!!!!! TODO find best frequency to transition to harmonic
 const float v5_2_lna_level_offset = 7;
 
+const freq_t v4_6_correction_frequency[CORRECTION_SIZE][CORRECTION_POINTS]=
+{
+ /* low */  {   100000,     500000,     8000000,    40000000,   60000000,   70000000,   110000000,  300000000,  330000000,  420000000,  450000000,  460000000,  510000000,  560000000,  620000000,  710000000,  760000000,  800000000,  810000000,  830000000},
+ /* low lna */   {   100000,     200000,     400000,     700000,     1000000,    2000000,    4000000,    30000000,   50000000,   210000000,  240000000,  260000000,  270000000,  300000000,  330000000,  510000000,  720000000,  790000000,  820000000,  830000000},
+ /* ultra */ {   30000000,   700000000,  1900000000,     2600000000,     2800000000,     2850000000,     3200000000,     3750000000,     4300000000,     4600000000,     4900000000,     5000000000,     5300000000,     5600000000,     5750000000,     6000000000,     6450000000,     6700000000,     7050000000,     7250000000},
+ /* ultra lna */ {   30000000,   700000000,  2050000000,     2300000000,     2600000000,     2800000000,     2900000000,     3100000000,     3550000000,     3850000000,     4400000000,     4800000000,     5000000000,     5200000000,     5400000000,     6000000000,     6200000000,     6450000000,     6550000000,     7250000000},
+ /* direct */    {   140000000,  160000000,  180000000,  280000000,  300000000,  400000000,  420000000,  430000000,  510000000,  560000000,  823000000,  880000000,  930000000,  940000000,  960000000,  990000000,  1060000000,     1080000000,     1110000000,     1130000000},
+ /* direct lna */    {   140000000,  180000000,  280000000,  300000000,  330000000,  400000000,  410000000,  430000000,  460000000,  470000000,  490000000,  550000000,  560000000,  823000000,  850000000,  870000000,  940000000,  960000000,  980000000,  1130000000,     },
+ /* harm */  {   30000000,   6000000000,     6195991091,     6302895323,     6400890869,     6899777283,     7104677060,     7398663697,     7701559020,     7799554566,     8200445434,     8298440980,     8503340757,     8904231626,     9002227171,     9100222717,     9198218263,     9296213808,     9501113586,     9804008909,     },
+ /* harm lna */  {   30000000,   6000000000,     6097995546,     6204899777,     6498886414,     6596881960,     6801781737,     7496659243,     7701559020,     7995545657,     8102449889,     8298440980,     8396436526,     8699331849,     8904231626,     9100222717,     9198218263,     9403118040,     9697104677,     10000000000,    },
+ /* out */   {   10000,  30000,  100000,     200000,     600000,     5000000,    170000000,  250000000,  300000000,  390000000,  490000000,  650000000,  690000000,  740000000,  780000000,  800000000,  810000000,  820000000,  823000000,  830000000,  },
+ /* direct */    {   500000000,  823000000,  830000000,  850000000,  860000000,  870000000,  880000000,  890000000,  900000000,  910000000,  920000000,  930000000,  970000000,  1030000000,     1040000000,     1050000000,     1060000000,     1070000000,     1080000000,     1100000000,     },
+ /* adf */   {   500000000,  700000000,  1340000000,     1500000000,     2000000000,     2350000000,     2800000000,     2810000000,     3000000000,     3410000000,     3600000000,     3990000000,     4330000000,     4570000000,     4760000000,     5310000000,     5320000000,     5720000000,     6100000000,     6440000000,     },
+ /* ultra */ {   10000,  100000,     500000,     3000000,    50000000,   800000000,  2300000000,     2800000000,     3300000000,     3620000000,     4200000000,     4470000000,     4480000000,     4570000000,     4780000000,     5330000000,     5700000000,     6000000000,     6390000000,     7300000000,     },
+};
+
+const float  v4_6_correction_value[CORRECTION_SIZE][CORRECTION_POINTS]=
+{
+ /* low */   {   2.88,   1.06,   0.9,    0.85,   1.3,    0.72,   0.8,    0.53,   1.03,   0.81,   0.55,   0.05,   -0.06,  0.18,   -0.28,  0.61,   0.98,   2.89,   3.89,   7.37,   },
+ /* low lna */   {   6.07,   2.97,   0.76,   -0.73,  -1.37,  -2.36,  -2.92,  1.36,   2.67,   3.52,   6.12,   9.45,   9.54,   5.97,   4.72,   3.88,   4.51,   6.38,   9.34,   11.81,  },
+ /* ultra */ {   0.8,    -0.28,  0.73,   2.69,   2.03,   3.31,   3.66,   5.8,    6.23,   9.6,    9.98,   9.93,   9.51,   12.2,   12.78,  11.56,  15.13,  18.42,  26.5,   32.3,   },
+ /* ultra lna */ {   1.55,   4.69,   6.26,   7.85,   8.56,   7.06,   8.14,   8.05,   11.61,  11.11,  13,     16.08,  15.89,  14.81,  14.94,  19.78,  20.41,  19.04,  19.28,  38,     },
+ /* direct */    {   34.6,   32.01,  29.84,  21.67,  20.24,  14.92,  14.41,  13.69,  10.25,  8.75,   -0.01,  -0.14,  0.69,   1.18,   1.19,   1.94,   3.52,   4.36,   5.11,   5.69,   },
+ /* direct lna */    {   30.57,  26.24,  22.57,  18.99,  16.02,  12.32,  12.31,  11.59,  10.08,  9.92,   8.18,   5.66,   5.68,   -2.2,   -2.65,  -2.68,  -1.79,  -0.94,  -0.89,  3.09,   },
+ /* harm */  {   18.7,   18.91,  19.91,  19.41,  19.91,  21.91,  22.41,  23.91,  26.91,  28.41,  34.41,  36.41,  37.91,  35.94,  35.94,  36.9,   38.44,  40.94,  44.94,  48.94,  },
+ /* harm lna */  {   13.6,   24.41,  23.41,  23.41,  19.91,  19.41,  21.91,  27.41,  31.91,  39.91,  41.91,  43.41,  42.91,  38.91,  40.91,  44.41,  47.91,  57.91,  61.41,  61.46,  },
+ /* out */   {   3.84,   2.31,   1.04,   0.1,    -0.82,  -1.51,  -2.33,  -2.25,  -2.04,  -1.43,  -2.2,   -2.36,  -1.84,  -1.23,  0.51,   1.8,    3.17,   6.28,   7.85,   12.37,  },
+ /* direct */    {   -7.76,  -3.85,  -3.71,  -3.54,  -3.45,  -3.34,  -3.23,  -3.11,  -2.98,  -2.86,  -2.74,  -2.64,  -2.14,  -1.29,  -1.14,  -1.05,  -0.89,  -0.79,  -0.62,  -0.31,  },
+ /* adf */   {   5.58,   3.91,   -4.52,  -6,     -3.36,  -2.14,  -2.3,   -3.11,  -3.11,  -2.05,  -1.5,   -1.36,  1.28,   4.63,   5.89,   5.55,   5.47,   6.49,   3.86,   5.8,    },
+ /* ultra */ {   3.69,   0.75,   -0.94,  -1.61,  -2.45,  -3.16,  -1.09,  0.2,    0.73,   2.14,   2.37,   4.84,   3.13,   4.15,   4.89,   4.13,   7.48,   7.14,   8.99,   18.8,   },
+};
+
+const float v4_6_harmonic_lna_level_offset = 0; // should be in correction table now -7;        // Depends on where the transition to harmonic is done!!!!!! TODO find best frequency to transition to harmonic
+const float v4_6_harmonic_level_offset = 0; // should be in correction table now -7;        // Depends on where the transition to harmonic is done!!!!!! TODO find best frequency to transition to harmonic
+const float v4_6_lna_level_offset = 7;
+
 #endif
 
 static const marker_t def_markers[MARKERS_MAX] = {
@@ -2156,19 +2194,22 @@ typedef struct version_t {
   const uint16_t min_adc;
   const uint16_t max_adc;
   const char *text;
-  const uint16_t hwid;
+  const uint8_t hwid;
+  const uint8_t hw_if;
 } version_t;
 
-#define MAX_VERSION_TEXT    4
+#define MAX_VERSION_TEXT    5
 const version_t hw_version_text[MAX_VERSION_TEXT] =
 {
- { 165, 179,    "V0.4.5.1",     1},
- { 180, 195,    "V0.4.5.1.1",   2},
- { 2030, 2050,  "V0.5.2",       102},
- { 2051, 2500,  "V0.5.3",       103},
+ { 165, 179,    "V0.4.5.1",     1,      0},
+ { 180, 195,    "V0.4.5.1.1",   2,      0},
+ { 250, 350,    "V0.4.6",       3,      1},
+ { 2030, 2050,  "V0.5.2",       102,    1},
+ { 2051, 2500,  "V0.5.3.2",     103,    1},
 };
 
 uint16_t hwid = 0;
+uint16_t hw_if = 0;
 
 const char *get_hw_version_text(void)
 {
@@ -2176,10 +2217,12 @@ const char *get_hw_version_text(void)
   for (int i=0; i<MAX_VERSION_TEXT;i++) {
     if (hw_version_text[i].min_adc <= v && v <= hw_version_text[i].max_adc) {
       hwid = hw_version_text[i].hwid;
+      hw_if = hw_version_text[i].hw_if;
       return hw_version_text[i].text;
     }
   }
   hwid = 0;
+  hw_if = 0;
   return "Unknown";
 }
 #endif
@@ -3078,7 +3121,7 @@ int main(void)
 #endif
   int reset_state = btn_side();
 #ifdef TINYSA4
-  if (adc1_single_read(0)> 1000) {
+  if (hwid >= 100) {
     max2871 = true;
     memcpy(config.correction_frequency, v5_2_correction_frequency, sizeof(config.correction_frequency));
     memcpy(config.correction_value, v5_2_correction_value, sizeof(config.correction_value));
@@ -3088,7 +3131,21 @@ int main(void)
       config.frequency_IF1 = DEFAULT_IF_PLUS;
    ULTRA_MAX_FREQ      = 7300000000ULL;
   } else {
-    ULTRA_MAX_FREQ      = 5340000000ULL;
+    if (hw_if) {
+      memcpy(config.correction_frequency, v4_6_correction_frequency, sizeof(config.correction_frequency));
+      memcpy(config.correction_value, v4_6_correction_value, sizeof(config.correction_value));
+      config.harmonic_level_offset = v4_6_harmonic_level_offset;
+      config.harmonic_lna_level_offset = v4_6_harmonic_lna_level_offset;
+      ULTRA_MAX_FREQ      = 5450000000ULL;
+    } else
+      ULTRA_MAX_FREQ      = 5340000000ULL;
+  }
+  if (hw_if) {
+    ULTRA_THRESHOLD = 800000000ULL;
+    NORMAL_MAX_FREQ = 900000000ULL;
+  } else {
+    ULTRA_THRESHOLD = 700000000ULL;
+    NORMAL_MAX_FREQ = 800000000ULL;
   }
   set_freq_boundaries();
 #endif
@@ -3110,7 +3167,7 @@ int main(void)
   }
 #ifdef __ULTRA__
   else
-    ultra_start = (config.ultra_start == ULTRA_AUTO ? DEFAULT_ULTRA_THRESHOLD : config.ultra_start);
+    ultra_start = (config.ultra_start == ULTRA_AUTO ? ULTRA_THRESHOLD : config.ultra_start);
 #endif
 
 

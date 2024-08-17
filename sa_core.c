@@ -512,7 +512,7 @@ void update_min_max_freq(void)
 #endif
     else
 #endif
-    maxFreq = DEFAULT_MAX_FREQ;
+    maxFreq = NORMAL_MAX_FREQ;
 #ifdef TINYSA4
     plot_printf(range_text, sizeof range_text, "%QHz to %QHz", minFreq, maxFreq);
 #endif
@@ -536,7 +536,7 @@ void update_min_max_freq(void)
     maxFreq = MAX_LOW_OUTPUT_FREQ;
 #endif
 #else
-   maxFreq = DEFAULT_MAX_FREQ;
+   maxFreq = NORMAL_MAX_FREQ;
 #endif
     break;
   case M_HIGH:
@@ -600,7 +600,7 @@ void reset_settings(int m)
   }
 #endif
 #ifdef __ULTRA__
-  ultra_start = (config.ultra_start == ULTRA_AUTO ? DEFAULT_ULTRA_THRESHOLD : config.ultra_start);
+  ultra_start = (config.ultra_start == ULTRA_AUTO ? ULTRA_THRESHOLD : config.ultra_start);
 #endif
 #ifdef TINYSA4
   drive_dBm = (float *) (setting.mode == M_GENHIGH ? adf_drive_dBm : si_drive_dBm);
@@ -727,7 +727,7 @@ void reset_settings(int m)
     set_sweep_frequency(ST_START, minFreq);
     set_sweep_frequency(ST_STOP, maxFreq);
 #ifdef TINYSA4
-    set_sweep_frequency(ST_STOP,  DEFAULT_MAX_FREQ);    // TODO <----------------- temp ----------------------
+    set_sweep_frequency(ST_STOP,  NORMAL_MAX_FREQ);    // TODO <----------------- temp ----------------------
     setting.attenuate_x2 = 0;
 #else
     setting.attenuate_x2 = 60;
@@ -7200,7 +7200,7 @@ quit:
       average /= 2.0;
       f += setting.frequency_step;
       shell_printf("\n\rStarting with average of %4.2f and IF at %DHz and step of %DHz till %DHz\n\r", average, setting.frequency_IF, setting.frequency_step, stop );
-//      while (f < DEFAULT_MAX_FREQ && !global_abort) {
+//      while (f < NORMAL_MAX_FREQ && !global_abort) {
       while (f < stop && !global_abort) {
         if ((k++ % 1000) == 0)
           shell_printf("Pass %d, freq %D\r", j+1, f);
@@ -7259,7 +7259,7 @@ quit:
       if (setting.test_argument)
         set_sweep_frequency(ST_CENTER, ((freq_t)setting.test_argument));
 #ifdef __ULTRA__
-      ultra_start = (config.ultra_start == ULTRA_AUTO ? DEFAULT_ULTRA_THRESHOLD : config.ultra_start);
+      ultra_start = (config.ultra_start == ULTRA_AUTO ? ULTRA_THRESHOLD : config.ultra_start);
 #endif
       test_acquire(TEST_LEVEL);                        // Acquire test
 	  test_validate(TEST_LEVEL);                       // Validate test
@@ -7504,12 +7504,12 @@ static int R_table[R_TABLE_SIZE] = {1,3,-3,4,5};
     case 2:
       reset_settings(M_LOW);
       set_sweep_frequency(ST_START, 300000000);
-      set_sweep_frequency(ST_STOP, DEFAULT_MAX_FREQ);
+      set_sweep_frequency(ST_STOP, NORMAL_MAX_FREQ);
       break;
     case 3:
       reset_settings(M_HIGH);
       set_sweep_frequency(ST_START, 300000000);
-      set_sweep_frequency(ST_STOP, DEFAULT_MAX_FREQ);
+      set_sweep_frequency(ST_STOP, NORMAL_MAX_FREQ);
       break;
     case 4:
       reset_settings(M_GENLOW);
