@@ -2268,7 +2268,7 @@ pureRSSI_t get_frequency_correction(freq_t f)      // Frequency dependent RSSI c
         actual_drive = 3;
 //      else if (f <  DRIVE0_MAX_FREQ)       // below 600MHz
 //        actual_drive = 0;                     // Never use drive zero
-      else if (f < DRIVE1_MAX_FREQ) // below 1.2GHz
+      else if (f < DRIVE1_MAX_FREQ || hw_if) // below 1.2GHz of v4.6
         actual_drive = 1;
       else if (f < DRIVE2_MAX_FREQ)  // below 2.1GHz
         actual_drive = 2;
@@ -3129,62 +3129,9 @@ static  const freq_t static_spur_table[STATIC_SPUR_TABLE_SIZE] =     // Valid fo
 #define static_spur_IF_plus  DEFAULT_IF_PLUS      // The IF frequency for which the spur table is value
 static  const freq_t static_spur_table_plus[] =     // Valid for IF=977.4MHz
 {
- 5233000,
- 6300000,
- 16483000,
- 16783000,
- 21300000,
- 26134000,
- 36300000,
- 41134000,
- 51300000,
- 66000000,
- 66300000,
- 70800000,
- 72000000,
- 78000000,
- 85200000,
- 101134000,
- 113134000,
- 114000000,
- 115200000,
- 243881127,
- 471300000,
- 487750054,
- 487762254,
- 501300000,
- 508800000,
- 650974672,
- 688800000,
- 699667000,
- 702865000,
- 703094000,
- 703465000,
- 706616000,
- 707216000,
- 708667000,
- 710366000,
- 710966000,
- 711667000,
- 711667000,
- 714115000,
- 714668000,
- 718465000,
- 718800000,
- 721616000,
- 722216000,
- 726300000,
- 729715000,
- 732865000,
- 738667000,
- 740366000,
- 740966000,
- 741667000,
- 747865000,
- 756667000,
- 759116000,
- 793465000,
- 797216000,
+ 266906127,
+ 533812254,
+ 712374836
 };
 
 #define STATIC_SPUR_TABLE_SIZE_PLUS sizeof(static_spur_table_plus)/8
@@ -3289,7 +3236,7 @@ void fill_spur_table(void)
     return;
   }
   if (actual_rbw_x10 < RBW_FOR_STATIC_TABLE) {         // if less then 1100kHz use static table
-    if (hwid >= 103) {
+    if (hw_if) {
       spur_table = (freq_t *)static_spur_table_plus;
       spur_table_size = STATIC_SPUR_TABLE_SIZE_PLUS;
       spur_IF = static_spur_IF_plus;
@@ -4389,7 +4336,7 @@ again:                                                              // Spur redu
 #define TCXO    30000000
 #define TXCO_DIV3   10000000
 
-#define AVOID_MULTI 100
+#define AVOID_MULTI 150
 
 #ifdef __SI5351__
         if (si5351_available) {
@@ -4445,7 +4392,7 @@ again:                                                              // Spur redu
           } else if (lf < 25000000 && max2871) {
             ADF4351_R_counter(-1);
             ADF4351_modulo(200);
-          } else if (lf > 8000000 /* && lf < 3000000000*/  && MODE_INPUT(setting.mode)) {
+          } else if (lf > 8000000  && !(lf > 1000000000 && hw_if) && MODE_INPUT(setting.mode)) {
             if (local_modulo == 0) {
               if (max2871)
                 ADF4351_modulo(100);
@@ -4464,9 +4411,12 @@ again:                                                              // Spur redu
               } else {
                 if ( (tf / TCXO) & 1 ) {    // Odd harmonic of 30MHz
                   ADF4351_R_counter(-3);
+                } else {
+                  if (hw_if)
+                    ADF4351_R_counter(7);
+                  else
+                    ADF4351_R_counter(4);
                 }
-                else
-                  ADF4351_R_counter(4);
               }
             }
 #if 0
@@ -4483,8 +4433,12 @@ again:                                                              // Spur redu
                 freq_t tf = ((lf + actual_rbw_x10*1000) / TXCO_DIV3) * TXCO_DIV3;
                 if (tf + actual_rbw_x10*1000 >= lf  && tf < lf + actual_rbw_x10*1000) // 10MHz
                   ADF4351_R_counter(-4);    // To avoid PLL Loop shoulders at multiple of 10MHz
-                else
-                  ADF4351_R_counter(3);     // To avoid PLL Loop shoulders
+                else {
+                  if (hw_if)
+                    ADF4351_R_counter(1);
+                  else
+                    ADF4351_R_counter(3);     // To avoid PLL Loop shoulders
+                }
               } else
                 ADF4351_R_counter(1);
             }
@@ -4534,7 +4488,7 @@ again:                                                              // Spur redu
               actual_drive = 3;
 //            else if (lf <  DRIVE0_MAX_FREQ)       // below 600MHz
 //              actual_drive = 0;
-            else if (lf < DRIVE1_MAX_FREQ) // below 1.2GHz
+            else if (lf < DRIVE1_MAX_FREQ || hw_if) // below 1.2GHz
               actual_drive = 1;
             else if (lf < DRIVE2_MAX_FREQ)  // below 2GHz
               actual_drive = 2;
@@ -5983,8 +5937,8 @@ static volatile int dummy;
 #else
 #define OIP3_SPAN   12
 #endif
-    markers[2].enabled = search_maximum(2, lf - (rf - lf), 40);
-    markers[3].enabled = search_maximum(3, rf + (rf - lf), 40);
+    markers[2].enabled = search_maximum(2, lf - (rf - lf), 10);
+    markers[3].enabled = search_maximum(3, rf + (rf - lf), 10);
   } else if (setting.measurement == M_PHASE_NOISE  && markers[0].index > 10) {    //  ------------Phase noise measurement
     // Position phase noise marker at requested offset
     set_marker_index(1, markers[0].index + (setting.mode == M_LOW ? WIDTH/4 : -WIDTH/4));

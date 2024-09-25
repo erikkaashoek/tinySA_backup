@@ -3121,31 +3121,33 @@ int main(void)
 #endif
   int reset_state = btn_side();
 #ifdef TINYSA4
+  if (hw_if) {
+    ULTRA_THRESHOLD = 800000000ULL;
+    NORMAL_MAX_FREQ = 900000000ULL;
+    config.frequency_IF1 = DEFAULT_IF_PLUS;
+  } else {
+    ULTRA_THRESHOLD = 700000000ULL;
+    NORMAL_MAX_FREQ = 800000000ULL;
+    config.frequency_IF1 = DEFAULT_IF;
+  }
   if (hwid >= 100) {
     max2871 = true;
     memcpy(config.correction_frequency, v5_2_correction_frequency, sizeof(config.correction_frequency));
     memcpy(config.correction_value, v5_2_correction_value, sizeof(config.correction_value));
     config.harmonic_level_offset = v5_2_harmonic_level_offset;
     config.harmonic_lna_level_offset = v5_2_harmonic_lna_level_offset;
-    if (hwid >= 103)
-      config.frequency_IF1 = DEFAULT_IF_PLUS;
-   ULTRA_MAX_FREQ      = 7300000000ULL;
+    ULTRA_MAX_FREQ      = 6300000000 + config.frequency_IF1;
   } else {
     if (hw_if) {
       memcpy(config.correction_frequency, v4_6_correction_frequency, sizeof(config.correction_frequency));
       memcpy(config.correction_value, v4_6_correction_value, sizeof(config.correction_value));
       config.harmonic_level_offset = v4_6_harmonic_level_offset;
       config.harmonic_lna_level_offset = v4_6_harmonic_lna_level_offset;
-      ULTRA_MAX_FREQ      = 5450000000ULL;
-    } else
-      ULTRA_MAX_FREQ      = 5340000000ULL;
-  }
-  if (hw_if) {
-    ULTRA_THRESHOLD = 800000000ULL;
-    NORMAL_MAX_FREQ = 900000000ULL;
-  } else {
-    ULTRA_THRESHOLD = 700000000ULL;
-    NORMAL_MAX_FREQ = 800000000ULL;
+//      ULTRA_MAX_FREQ      = 5450000000ULL;
+    }
+//    else
+//      ULTRA_MAX_FREQ      = 5340000000ULL;
+    ULTRA_MAX_FREQ = 4350000000 + config.frequency_IF1;
   }
   set_freq_boundaries();
 #endif
