@@ -5126,11 +5126,13 @@ static bool sweep(bool break_on_operation)
 
 #ifdef __ULTRA__
   if (config.ultra_start == ULTRA_AUTO) {
+    freq_t u_base = (hw_if ? 900000000 : 800000000);
+
     if (setting.mode == M_LOW){
-      if (getFrequency(sweep_points-1) <= 800000000)
-        ultra_start = 800000000;
+      if (getFrequency(sweep_points-1) <= u_base)
+        ultra_start = u_base;
       else
-        ultra_start = 700000000;
+        ultra_start = u_base - 100000000;
     } else if (setting.mode == M_GENLOW) {
       if (setting.mixer_output)
         ultra_start = MAX_LOW_OUTPUT_FREQ;
@@ -6393,7 +6395,10 @@ static freq_t spur_test_freq = 900000000;
 static freq_t direct_test_freq = 180000000;
 
 void determine_direct_test_freq(void) {
+  if (hw_if)
+    direct_test_freq = 870000000;
   return;
+
   int old_ultra = config.ultra;
   config.ultra = true;
   float max_level = -150;
@@ -6879,7 +6884,7 @@ common_silent:
     ultra_start = 0;
     break;
   case TP_30MHZ_DIRECT:
-    ultra_start = 800000000;
+    ultra_start = (hw_if ? 900000000 : 800000000);
     direct_test = true;
     determine_direct_test_freq();
     break;
