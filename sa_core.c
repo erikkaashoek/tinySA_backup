@@ -405,7 +405,7 @@ void set_input_path(freq_t f)
   }
   else if (MODE_HIGH(setting.mode))
       signal_path = PATH_HIGH;
-  else if (direct_test && f >= 900000000 && f < 1100000000)
+  else if (direct_test && f >= 830000000 && f < 1130000000)
     signal_path = PATH_DIRECT;
   else if (config.direct && f >= config.direct_start && f < config.direct_stop)
     signal_path = PATH_DIRECT;
@@ -4413,7 +4413,7 @@ again:                                                              // Spur redu
                   ADF4351_R_counter(-3);
                 } else {
                   if (hw_if)
-                    ADF4351_R_counter(7);
+                    ADF4351_R_counter(5);
                   else
                     ADF4351_R_counter(4);
                 }
@@ -6301,7 +6301,7 @@ const test_case_t test_case [] =
  TEST_CASE_STRUCT(TC_SIGNAL,    TP_30MHZ_ULTRA, 30,    1,      CAL_LEVEL,    10,     -85),      // 4 Test Ultra mode
 #define TEST_SILENCE 4
  TEST_CASE_STRUCT(TC_BELOW,     TP_SILENT,      200,    100,    -70,    0,      0),         // 5  Wide band noise floor low mode
- TEST_CASE_STRUCT(TC_ABOVE,     TP_30MHZ_DIRECT,900,   10,    -90,    0,      -90),         // 6 Direct path with harmonic
+ TEST_CASE_STRUCT(TC_ABOVE,     TP_30MHZ_DIRECT,900,   10,    -60,    0,      -80),         // 6 Direct path with harmonic
  TEST_CASE_STRUCT(TC_SIGNAL,    TP_10MHZEXTRA,  30,     14,      CAL_LEVEL,    26,     -45),      // 7 BPF loss and stop band
  TEST_CASE_STRUCT(TC_FLAT,      TP_10MHZEXTRA,  30,     14,      -28,    9,     -60),       // 8 BPF pass band flatness
  TEST_CASE_STRUCT(TC_BELOW,     TP_15MHZ_LNA2,    855,    1,     -80,    0,      -80),       // 9 LPF cutoff
@@ -6391,8 +6391,8 @@ static volatile int test_wait = false;
 static float test_value;
 
 #ifdef TINYSA4
-static freq_t spur_test_freq = 900000000;
-static freq_t direct_test_freq = 180000000;
+static freq_t spur_test_freq = 930000000;
+static freq_t direct_test_freq = 870000000; // 180000000;
 
 void determine_direct_test_freq(void) {
   if (hw_if)
@@ -6415,7 +6415,10 @@ void determine_direct_test_freq(void) {
 }
 
 static float lpf_test_level = 0;
-#define LPF_TEST_FREQ 795000000
+#define LPF_TEST_FREQ (hw_if ? 915000000 : 795000000)
+#define LPF_TEST_FREQ2 (hw_if ? 1005000000 : 855000000)
+
+
 void determine_lpf_test_level(void) {
   int old_ultra = config.ultra;
   config.ultra = true;
@@ -6843,6 +6846,8 @@ common_silent:
     break;
 #ifdef TINYSA4
   case TP_15MHZ_LNA:
+    force_signal_path = true;
+    test_path = 1;
     determine_lpf_test_level();
     goto simple;
   case TP_15MHZ_LNA2:
@@ -6850,6 +6855,9 @@ common_silent:
     test_path = 1;
     goto simple;
   case TP_30MHZ_DIRECT:
+    force_signal_path = true;
+    test_path = 4;
+    goto simple;
   case TP_30MHZ_ULTRA:
   case TP_30MHZ_LNA:
 #endif
@@ -6911,23 +6919,20 @@ common_silent:
   TRACE_ENABLE(TRACE_STORED_FLAG);
   setting.stored[TRACE_STORED] = true;
   set_reflevel(test_case[i].pass+10);
+  freq_t c_freq = (freq_t)(test_case[i].center * 1000000);
 #ifdef TINYSA4
   if (test_case[i].kind == TC_JUMP) {
-    set_sweep_frequency(ST_CENTER, test_freq);
+    c_freq = test_freq;
     setting.repeat = 10;
   }
-  else
-#endif
-  {
-    freq_t c_freq = (freq_t)(test_case[i].center * 1000000);
-#ifdef TINYSA4
-    if (test_case[i].setup == TP_30MHZ_DIRECT)
+  else if (test_case[i].setup == TP_15MHZ_LNA2)
+    c_freq = LPF_TEST_FREQ2;
+  else if (test_case[i].setup == TP_30MHZ_DIRECT)
       c_freq = direct_test_freq;
-    if (test_case[i].setup == TP_15MHZ_LNA)
+  else if (test_case[i].setup == TP_15MHZ_LNA)
       c_freq = LPF_TEST_FREQ;
 #endif
-    set_sweep_frequency(ST_CENTER, c_freq);
-  }
+  set_sweep_frequency(ST_CENTER, c_freq);
   set_sweep_frequency(ST_SPAN, (freq_t)(test_case[i].span * 1000000));
   draw_cal_status();
 }
@@ -7019,7 +7024,7 @@ void sort_spur_count(void) {
 //static bool test_wait = false;
 static int test_step = 0;
 
-void self_test(int test)
+void selftest(int test)
 {
   bool no_wait = false;
 #ifdef TINYSA4
@@ -7857,7 +7862,7 @@ void calibrate(void)
 //  setting.frequency_IF = config.frequency_IF1;    // set in selftest
   float direct_level=0.0;
   setting.test_argument = -7;
-  self_test(0);
+  selftest(0);
   int if_error = peakFreq - 30000000;
   if (if_error > -1000000 && if_error < 1000000) {
     config.frequency_IF1 += if_error;
@@ -7999,7 +8004,7 @@ void calibrate(void)
           force_signal_path = true;
           break;
         case CS_DIRECT_REF:
-          test_path = 0;      // Normal
+          test_path = 3;      // Ultra LNA
           setting.spur_removal = S_OFF;
           direct_common:
           set_sweep_frequency(ST_CENTER, direct_test_freq);

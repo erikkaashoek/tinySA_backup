@@ -232,7 +232,7 @@ static THD_FUNCTION(Thread1, arg)
       }
     } else if (sweep_mode & SWEEP_SELFTEST) {
       // call from lowest level to save stack space
-      self_test(setting.test);
+      selftest(setting.test);
       completed = true;
 //      sweep_mode = SWEEP_ENABLE;
 #ifdef __SINGLE_LETTER__
