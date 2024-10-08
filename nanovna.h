@@ -18,7 +18,7 @@
  */
 #include "ch.h"
 
-#ifdef TINYSA_F303
+//#ifdef TINYSA_F303
 #ifdef TINYSA_F072
 #error "Remove comment for #ifdef TINYSA_F303"
 #endif
@@ -26,7 +26,7 @@
 #define TINYSA4
 #endif
 #define TINYSA4_PROTO
-#endif
+//#endif
 
 #ifdef TINYSA_F072
 #ifdef TINYSA_F303
@@ -143,6 +143,7 @@ typedef uint32_t freq_t;
 #define DEFAULT_IF  433800000
 #define DEFAULT_SPUR_IF 434000000
 #define DEFAULT_MAX_FREQ    350000000
+#define NORMAL_MAX_FREQ DEFAULT_MAX_FREQ
 #define MAX_LO_FREQ         959800000UL
 #define MIN_LO_FREQ         240000000UL
 #define MIN_BELOW_LO         550000000UL
@@ -1355,6 +1356,7 @@ typedef struct setting
 #define PRESET_NAME_LENGTH  10
   char preset_name[PRESET_NAME_LENGTH];
 #endif
+  bool  dBuV;
   int64_t test_argument;            // used for tests
   uint32_t checksum;            // must be last and at 4 byte boundary
 }setting_t;
@@ -1491,8 +1493,8 @@ typedef struct properties {
 
 //sizeof(properties_t) == 0x1200
 
-#define CONFIG_MAGIC  0x434f4e69
-#define SETTING_MAGIC 0x434f4e69
+#define CONFIG_MAGIC  0x434f4e6a
+#define SETTING_MAGIC 0x434f4e6a
 
 extern int16_t lastsaveid;
 //extern properties_t *active_props;

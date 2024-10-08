@@ -536,7 +536,7 @@ void update_min_max_freq(void)
     maxFreq = MAX_LOW_OUTPUT_FREQ;
 #endif
 #else
-   maxFreq = NORMAL_MAX_FREQ;
+   maxFreq = DEFAULT_MAX_FREQ;
 #endif
     break;
   case M_HIGH:
@@ -4413,7 +4413,7 @@ again:                                                              // Spur redu
                   ADF4351_R_counter(-3);
                 } else {
                   if (hw_if)
-                    ADF4351_R_counter(5);
+                    ADF4351_R_counter(4);
                   else
                     ADF4351_R_counter(4);
                 }
@@ -4488,6 +4488,8 @@ again:                                                              // Spur redu
               actual_drive = 3;
 //            else if (lf <  DRIVE0_MAX_FREQ)       // below 600MHz
 //              actual_drive = 0;
+            else if (setting.mode == M_GENLOW && hw_if)
+              actual_drive = 0;
             else if (lf < DRIVE1_MAX_FREQ || hw_if) // below 1.2GHz
               actual_drive = 1;
             else if (lf < DRIVE2_MAX_FREQ)  // below 2GHz
@@ -6392,18 +6394,17 @@ static float test_value;
 
 #ifdef TINYSA4
 static freq_t spur_test_freq = 930000000;
-static freq_t direct_test_freq = 870000000; // 180000000;
+static freq_t direct_test_freq = 990000000; // 180000000;
 
 void determine_direct_test_freq(void) {
-  if (hw_if)
-    direct_test_freq = 870000000;
-  return;
+  if (!hw_if)
+    return;
 
   int old_ultra = config.ultra;
   config.ultra = true;
   float max_level = -150;
   set_refer_output(0);
-  for (freq_t test_freq = 900000000UL; test_freq < 1000000000UL; test_freq += 30000000) {
+  for (freq_t test_freq = 1020000000UL; test_freq < 1100000000UL; test_freq += 30000000) {
     dirty = true;
     float v = PURE_TO_float(perform(false, 0, test_freq, false));
     if (v > max_level) {
@@ -7780,7 +7781,7 @@ float get_jump_config(int i) {
   return 0;
 }
 
-enum {CS_NORMAL, CS_LNA, CS_SWITCH, CS_ULTRA, CS_ULTRA_LNA, CS_DIRECT_REF, /* CS_DIRECT,*/ CS_DIRECT_LNA, CS_SPUR_REF, CS_SPUR_ERROR, CS_HARMONIC, CS_HARMONIC_LNA, /* CS_BPF_REF, CS_BPF, */ CS_CORRECTION_REF, CS_CORRECTION_LNA, CS_MAX };
+enum {CS_NORMAL, CS_LNA, CS_SWITCH, CS_ULTRA, CS_ULTRA_LNA, CS_DIRECT_REF, CS_DIRECT, CS_DIRECT_LNA, CS_SPUR_REF, CS_SPUR_ERROR, CS_HARMONIC, CS_HARMONIC_LNA, /* CS_BPF_REF, CS_BPF, */ CS_CORRECTION_REF, CS_CORRECTION_LNA, CS_MAX };
 #define ULTRA_HARMONIC_CAL_FREQ 5340000000
 #else
 enum {CS_NORMAL, CS_SWITCH, CS_MAX };
@@ -8010,7 +8011,7 @@ void calibrate(void)
           set_sweep_frequency(ST_CENTER, direct_test_freq);
           force_signal_path = true;
           break;
-#if 0
+#if 1
         case CS_DIRECT:
           test_path = 4;      // Direct path at 900MHz
           goto direct_common;
@@ -8126,11 +8127,11 @@ low_level:
            config.shift_level_offset = direct_level -  marker_to_value(0);
         else if (calibration_stage == CS_DIRECT_REF)
           direct_level = marker_to_value(0);
-//        else if (calibration_stage == CS_DIRECT)
-//          offset = set_actual_power(direct_level);
+        else if (calibration_stage == CS_DIRECT)
+          offset = set_actual_power(direct_level);
         else if (calibration_stage == CS_DIRECT_LNA){
           offset = set_actual_power(direct_level);
-          config.direct_level_offset = config.direct_lna_level_offset - (config.low_level_offset - config.lna_level_offset);
+//          config.direct_level_offset = config.direct_lna_level_offset - (config.low_level_offset - config.lna_level_offset);
         }
         else
 #endif

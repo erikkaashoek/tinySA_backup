@@ -2453,6 +2453,18 @@ static UI_FUNCTION_ADV_CALLBACK(menu_modulation_acb)
 //  menu_move_back(false);  // Don't move back
 }
 
+static UI_FUNCTION_ADV_CALLBACK(menu_level_in_dBuV)
+{
+  (void)item;
+  (void)data;
+  if (b){
+    b->icon = setting.dBuV ? BUTTON_ICON_CHECK : BUTTON_ICON_NOCHECK;
+    return;
+  }
+  setting.dBuV = !setting.dBuV;
+  menu_move_back(false);
+}
+
 static UI_FUNCTION_ADV_CALLBACK(menu_smodulation_acb){
   (void)item;
   (void)data;
@@ -4361,6 +4373,7 @@ static const menuitem_t  menu_modulation[] = {
   { MT_FORM | MT_ADV_CALLBACK | MT_LOW, MO_EXTERNAL,MT_CUSTOM_LABEL,    menu_modulation_acb},
   { MT_FORM | MT_KEYPAD,   KM_MODULATION,           "FREQ: %s",         "1Hz..5kHz"},
 #endif
+  { MT_FORM | MT_ADV_CALLBACK, 0,                   "Level in dBuV", menu_level_in_dBuV},
   { MT_FORM | MT_NONE, 0, NULL, menu_back} // next-> menu_back
 };
 
@@ -5435,19 +5448,31 @@ static void fetch_numeric_target(uint8_t mode)
       end_level = level_max();
     uistat.value += setting.external_gain;
     end_level += setting.external_gain;
+    char *u = "m";
+    float el = end_level;
+    if (setting.dBuV) {
+      u = "uV";
+      uistat.value += 107;
+      el += 107;
+    }
     if (setting.level_sweep != 0)
-      plot_printf(uistat.text, sizeof uistat.text, "%.1f to %.1fdBm", uistat.value, end_level);
+      plot_printf(uistat.text, sizeof uistat.text, "%.1f to %.1fdBm", uistat.value, el);
     else
 #ifdef TINYSA4
-      plot_printf(uistat.text, sizeof uistat.text, "%+.1fdBm %s", uistat.value, (setting.disable_correction?"Uncorrected":""));
+      plot_printf(uistat.text, sizeof uistat.text, "%+.1fdB%s %s", uistat.value, u, (setting.disable_correction?"Uncorrected":""));
 #else
-      plot_printf(uistat.text, sizeof uistat.text, "%+.1fdBm", uistat.value);
+      plot_printf(uistat.text, sizeof uistat.text, "%+.1fdB%s", uistat.value, u);
 #endif
     break;
   case KM_HIGHOUTLEVEL:
     uistat.value = get_level();           // compensation for dB offset during low output mode
     uistat.value += setting.external_gain;
-    plot_printf(uistat.text, sizeof uistat.text, "%+.1fdBm", uistat.value);
+    char *unit = "m";
+    if (setting.dBuV) {
+      unit = "uV";
+      uistat.value += 107;
+    }
+    plot_printf(uistat.text, sizeof uistat.text, "%+.1fdB%s", uistat.value, unit);
     break;
   case KM_DECAY:
     uistat.value = setting.decay;
@@ -5711,9 +5736,13 @@ set_numeric_value(void)
     set_repeat(uistat.value);
     break;
   case KM_LOWOUTLEVEL:
+    if (setting.dBuV)
+      uistat.value -= 107;
     set_level(uistat.value - setting.external_gain);
     break;
   case KM_HIGHOUTLEVEL:
+    if (setting.dBuV)
+      uistat.value -= 107;
     set_level(uistat.value - setting.external_gain);
     break;
   case KM_DECAY:
@@ -7015,7 +7044,6 @@ menu_select_touch(const menuitem_t * m, int i, int pos)
     while (touch_check() != EVT_TOUCH_NONE){
       touch_position(&touch_x, &touch_y);
       if (abs(touch_x -  prev_touch_x) < 2) continue;
-
       fetch_numeric_target(keypad);
       int new_slider = touch_x - LCD_WIDTH/2;   // Can have negative outcome
       if (new_slider < - (MENU_FORM_WIDTH-8)/2 - 1)
@@ -7081,7 +7109,10 @@ menu_select_touch(const menuitem_t * m, int i, int pos)
         chThdSleepMilliseconds(100);
       } else if (keypad == KM_LOWOUTLEVEL) {
         uistat.value =  setting.external_gain + ((touch_x - OFFSETX+4) * level_range() ) / (MENU_FORM_WIDTH-8) + level_min() ;
+        bool old_dBuV = setting.dBuV;
+        setting.dBuV = false;
         set_keypad_value(keypad);
+        setting.dBuV = old_dBuV;;
         draw_menu_mask(1<<i);
         perform(false, 0, get_sweep_frequency(ST_CENTER), false);
       } else if (keypad == KM_HIGHOUTLEVEL) {
@@ -7127,7 +7158,10 @@ menu_select_touch(const menuitem_t * m, int i, int pos)
       check_frequency_slider(uistat.freq_value);
     }
     if (do_exit){
+      bool old_dBuV = setting.dBuV;
+      setting.dBuV = false;
       set_keypad_value(keypad);
+      setting.dBuV = old_dBuV;;
       selection = -1;
       draw_menu_mask(1<<i);
       perform(false, 0, get_sweep_frequency(ST_CENTER), false);
