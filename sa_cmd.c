@@ -580,17 +580,23 @@ VNA_SHELL_FUNCTION(cmd_rbw)
 
 VNA_SHELL_FUNCTION(cmd_if)
 {
+  char *t = "975M..979M";
   if (argc != 1 || argv[0][0] == '?') {
   usage:
 #ifdef TINYSA4
-  usage_printf("usage: if {975M..979M}\r\n%QHz\r\n", setting.frequency_IF);
+  if (hw_if)
+    t = "1067M..1073M";
+  usage_printf("usage: if {%s}\r\n%QHz\r\n", t, setting.frequency_IF);
 #else
     usage_printf("usage: if {433M..435M}\r\n%QHz\r\n", setting.frequency_IF);
 #endif
     return;
   }
   freq_t a = (freq_t)my_atoi(argv[0]);
-  if (a!= 0 &&( a < (DEFAULT_IF - (freq_t)2000000) || a>(DEFAULT_IF + (freq_t)2000000)))
+  freq_t f = DEFAULT_IF;
+  if (hw_if)
+    f = DEFAULT_IF_PLUS;
+  if (a!= 0 &&( a < (f - (freq_t)5000000) || a>(f + (freq_t)5000000)))
     goto usage;
   setting.auto_IF = false;
   set_IF(a);

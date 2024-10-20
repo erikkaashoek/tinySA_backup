@@ -3062,7 +3062,7 @@ static  const freq_t spur_table[] =                                 // Frequenci
 const int spur_table_size = (sizeof spur_table)/sizeof(freq_t);
 #endif
 #ifdef TINYSA4
-#define static_spur_IF  DEFAULT_IF    // The IF frequency for which the spur table is value
+#define static_spur_IF  977400000; // DEFAULT_IF    // The IF frequency for which the spur table is value
 #define STATIC_SPUR_TABLE_SIZE 56
 static  const freq_t static_spur_table[STATIC_SPUR_TABLE_SIZE] =     // Valid for IF=977.4MHz
 {
@@ -3235,12 +3235,15 @@ void fill_spur_table(void)
     spur_table_size = dynamic_spur_table_size;
     return;
   }
-  if (actual_rbw_x10 < RBW_FOR_STATIC_TABLE) {         // if less then 1100kHz use static table
+  if (actual_rbw_x10 < RBW_FOR_STATIC_TABLE && !hw_if) {         // if less then 1100kHz use static table
+#if 0
     if (hw_if) {
       spur_table = (freq_t *)static_spur_table_plus;
       spur_table_size = STATIC_SPUR_TABLE_SIZE_PLUS;
       spur_IF = static_spur_IF_plus;
-    } else {
+    } else
+#endif
+    {
       spur_table = (freq_t *)static_spur_table;
       spur_table_size = STATIC_SPUR_TABLE_SIZE;
       spur_IF = static_spur_IF;
@@ -3250,7 +3253,7 @@ void fill_spur_table(void)
   if (!setting.auto_IF)
     corr_IF = setting.frequency_IF;
   else {
-    corr_IF = config.frequency_IF1;
+    corr_IF = (hw_if? config.frequency_IF1 + 250000 : config.frequency_IF1);
   }
   dynamic_spur_table_size = 0;
 //  dynamic_spur_table[dynamic_spur_table_size++] = 132000000;
@@ -3258,8 +3261,11 @@ void fill_spur_table(void)
 //  dynamic_spur_table[dynamic_spur_table_size++] = 174600000;
 //  dynamic_spur_table[dynamic_spur_table_size++] = 219000000;
   dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/4 -SPUR_FACTOR/2;
+  dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/4 -SPUR_FACTOR/2 + 60000;
 //  dynamic_spur_table[dynamic_spur_table_size++] = 266000000;
   dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/2 -SPUR_FACTOR;
+  if (actual_rbw_x10 < 3000)
+      dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/2 -SPUR_FACTOR + 120000;
   dynamic_spur_table[dynamic_spur_table_size++] = corr_IF*2/3 -SPUR_FACTOR*2/3;
   spur_table = dynamic_spur_table;
   spur_table_size = dynamic_spur_table_size;
@@ -4090,18 +4096,10 @@ again:                                                              // Spur redu
       else
       {
 #ifdef TINYSA4
-        if (actual_rbw_x10 < RBW_FOR_STATIC_TABLE && setting.mode == M_LOW && lf > static_spur_table[0] -  RBW_FOR_STATIC_TABLE * 100)
+        if (!hw_if && actual_rbw_x10 < RBW_FOR_STATIC_TABLE && setting.mode == M_LOW && lf > static_spur_table[0] -  RBW_FOR_STATIC_TABLE * 100)
           local_IF = spur_IF; // static spur table IF
         else
-          local_IF = config.frequency_IF1;
-#if 0
-        if ( S_IS_AUTO(setting.below_IF)) {
-//          if (f < 2000000 && S_IS_AUTO(setting.spur_removal))
-//            local_IF += DEFAULT_SPUR_OFFSET;
-//          else // if (lf > ULTRA_MAX_FREQ || lf < local_IF/2  || ( lf + (uint64_t)local_IF< MAX_LO_FREQ && lf > 136000000ULL + local_IF) )
-            local_IF += DEFAULT_SPUR_OFFSET/2;
-        }
-#endif
+          local_IF = (hw_if? config.frequency_IF1 + 250000 : config.frequency_IF1);
 #else
         local_IF = DEFAULT_IF;
 #endif
@@ -4176,30 +4174,6 @@ again:                                                              // Spur redu
           } else {
             int spur_flag = avoid_spur(lf);
 #ifdef TINYSA4
-#if 0
-            if (debug_avoid) {
-              if (spur_flag == F_NEAR_SPUR) {
-                stored_t[i] = -70.0;                                       // Display when to do spur shift in the stored trace
-  //              local_IF -= DEFAULT_SPUR_OFFSET/2;
-              } else if (spur_flag == F_AT_SPUR){
-                stored_t[i] = -60.0;
-                // Display when to do spur shift in the stored trace
-                if (debug_avoid_second) {
-                  if (S_IS_AUTO(setting.below_IF) && lf < local_IF/2 - 2000000) {
-                    setting.below_IF = S_AUTO_ON;
-                    local_IF = local_IF;                          // No spur removal and no spur, center in IF
-                  } else if (setting.auto_IF) {
-                    local_IF = local_IF + DEFAULT_SPUR_OFFSET/2;
-                    //                if (actual_rbw_x10 == 6000 )
-                    //                  local_IF = local_IF + 50000;
-                    LO_spur_shifted = true;
-                  }
-                }
-              } else {
-                stored_t[i] = -90.0;                                  // Display when to do spur shift in the stored trace
-              }
-            } else
-#endif
             if(spur_flag) {         // check if alternate IF is needed to avoid spur.
               if (spur_flag == F_NEAR_SPUR) {
                 if (debug_avoid) stored_t[i] = -70.0;                                  // Display when to do spur shift in the stored trace
@@ -4214,7 +4188,7 @@ again:                                                              // Spur redu
                 } else
 #endif
                 if (setting.auto_IF) {
-                  local_IF = local_IF + (actual_rbw_x10 > 2000 ? DEFAULT_SPUR_OFFSET : DEFAULT_SPUR_OFFSET/2); // TODO find better way to shift spur away at large RBW/2;
+                  local_IF = local_IF + (actual_rbw_x10 > 2000  || hw_if ? DEFAULT_SPUR_OFFSET : DEFAULT_SPUR_OFFSET/2); // TODO find better way to shift spur away at large RBW/2;
                   //                if (actual_rbw_x10 == 6000 )
                   //                  local_IF = local_IF + 50000;
                   LO_spur_shifted = true;
@@ -4238,7 +4212,7 @@ again:                                                              // Spur redu
               if (lf<LOW_SHIFT_FREQ) {   // below 2MHz
                 local_IF += DEFAULT_SPUR_OFFSET-(actual_rbw_x10 > 1000 ? 200000 : 0);                  // Shift to avoid zero Hz peak
                 LO_shifting = true;
-              }
+              } else
               if (config.hide_21MHz && S_IS_AUTO(setting.below_IF)) {
                 if (binary_search_table(lf, additional_spur_table, ADDITIONAL_SPUR_TABLE_SIZE, ADDITIONAL_SPUR_TABE_GATE))
                 {
@@ -4247,6 +4221,8 @@ again:                                                              // Spur redu
                   setting.below_IF= S_AUTO_OFF;
                 }
               }
+              else if (hw_if && actual_rbw_x10 < 8500)
+                local_IF += 250000;
 
 #else
               local_IF = local_IF; // + DEFAULT_SPUR_OFFSET/2;                  // No spure removal and no spur, center in IF
@@ -6802,7 +6778,7 @@ common_silent:
     setting.tracking = true; //Sweep BPF
     setting.auto_IF = false;
 #ifdef TINYSA4
-    setting.frequency_IF = config.frequency_IF1 + STATIC_DEFAULT_SPUR_OFFSET/3;  // This is the place where the
+    setting.frequency_IF = config.frequency_IF1 + STATIC_DEFAULT_SPUR_OFFSET/3;  // This is the place where the inverted offset from the middle of the IF pass band is defined for normal mode.
     set_refer_output(0);
 #else
     setting.frequency_IF = DEFAULT_IF+210000;                // Center on SAW filters
@@ -7031,10 +7007,10 @@ void selftest(int test)
 #ifdef TINYSA4
   bool old_ultra = config.ultra;
   config.ultra = true;
-  if (adc_vbat_read() < 3800) {
-    drawMessageBox("Battery low", "Charge before testing", 2000);
-    goto quit;
-  }
+//  if (adc_vbat_read() < 3800) {
+//    drawMessageBox("Battery low", "Charge before testing", 2000);
+//    goto quit;
+//  }
 #endif
   setting.external_gain = 0;                  // Must be 0
 //  set_sweep_points(POINTS_COUNT);
@@ -7865,7 +7841,7 @@ void calibrate(void)
   setting.test_argument = -7;
   selftest(0);
   int if_error = peakFreq - 30000000;
-  if (if_error > -1000000 && if_error < 1000000) {
+  if (if_error > -2000000 && if_error < 2000000) {
     config.frequency_IF1 += if_error;
     setting.auto_IF = true;
     setting.frequency_IF = config.frequency_IF1;
