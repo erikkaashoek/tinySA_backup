@@ -156,7 +156,7 @@ typedef uint32_t freq_t;
 typedef uint64_t freq_t;
 #define FREQ_MULTIPLIER 100         // Multiplier of the 30MHz reference to get accurate frequency correction
 #define VARIANT(X,Y) (Y)
-#define DEFAULT_IF  ((freq_t)977900000)
+#define DEFAULT_IF  ((freq_t)977400000)
 #define DEFAULT_IF_PLUS  ((freq_t)1070100000)
 extern uint16_t hw_if;
 #define DEFAULT_SPUR_OFFSET ((freq_t)(actual_rbw_x10 > 3000 ? 1500000 : 1000000))
@@ -1493,8 +1493,8 @@ typedef struct properties {
 
 //sizeof(properties_t) == 0x1200
 
-#define CONFIG_MAGIC  0x434f4e6a
-#define SETTING_MAGIC 0x434f4e6a
+#define CONFIG_MAGIC  0x434f4e6b
+#define SETTING_MAGIC 0x434f4e6b
 
 extern int16_t lastsaveid;
 //extern properties_t *active_props;

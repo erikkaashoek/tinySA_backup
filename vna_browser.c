@@ -204,6 +204,7 @@ finish3:
     while (f_read(fs_file, buf_8, buffer_size, &size) == FR_OK && size > 0) {
       for (i = 0; i < size; i++) {
         uint8_t c = buf_8[i];
+        if (c == ',') c = ' ';
         if (c == '\r') {                                                     // New line (Enter)
           line[j] = 0; j = 0;
           char *args[16];

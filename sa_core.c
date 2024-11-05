@@ -387,7 +387,7 @@ void set_output_path(freq_t f, float level)
       SI4463_init_tx();
     break;
   }
-
+  setting.spur_removal &= 0xFE;
 }
 
 static void calculate_static_correction(void);
@@ -412,14 +412,15 @@ void set_input_path(freq_t f)
   else if(config.ultra && ((config.ultra_start == ULTRA_AUTO && f > ultra_start) || (config.ultra_start != ULTRA_AUTO && f >config.ultra_start))) {
     LO_harmonic = (f > (config.harmonic_start?config.harmonic_start:ULTRA_MAX_FREQ));
     signal_path = PATH_ULTRA;
-  } else
+  } else {
     signal_path = PATH_LOW;
-
+  }
   if (signal_path == PATH_HIGH) {
     return;                 // TODO setup high input path
   }
   enable_rx_output(setting.atten_step);
 
+  bool mirrors = false;
   switch(signal_path) {
   case PATH_LOW:
     enable_ultra(false);
@@ -441,19 +442,26 @@ void set_input_path(freq_t f)
 
     goto common2;
   case PATH_ULTRA:
+    mirrors = true;
     enable_ultra(true);
     enable_high(false);
     enable_direct(false);
     enable_extra_lna(setting.extra_lna);
-    common:
+  common:
     enable_ADF_output(true, setting.tracking_output);
-    common2:
+  common2:
     if (SI4463_is_in_tx_mode())
       SI4463_init_rx();
     break;
   }
   if (force_signal_path)
     calculate_static_correction();
+  if (S_IS_AUTO(setting.spur_removal)) {
+    if (mirrors)
+      setting.spur_removal |= 0x01;
+    else
+      setting.spur_removal &= 0xFE;
+  }
 }
 #endif
 
@@ -3139,6 +3147,7 @@ static  const freq_t static_spur_table_plus[] =     // Valid for IF=977.4MHz
 #define MAX_DYNAMIC_SPUR_TABLE_SIZE 100
 static  freq_t dynamic_spur_table[MAX_DYNAMIC_SPUR_TABLE_SIZE];       // Frequencies to be calculated
 static int dynamic_spur_table_size = 0;
+freq_t dynamic_spur_IF = 0;
 static int always_use_dynamic_table = false;
 
 static  freq_t *spur_table = (freq_t *)static_spur_table;
@@ -3230,7 +3239,7 @@ void fill_spur_table(void)
 {
   freq_t corr_IF;
 
-  if (always_use_dynamic_table) {
+  if (always_use_dynamic_table) {       // Only after doing selftest 1
     spur_table = dynamic_spur_table;
     spur_table_size = dynamic_spur_table_size;
     return;
@@ -3250,11 +3259,10 @@ void fill_spur_table(void)
     }
     return;
   }
-  if (!setting.auto_IF)
-    corr_IF = setting.frequency_IF;
-  else {
-    corr_IF = (hw_if? config.frequency_IF1 + 250000 : config.frequency_IF1);
-  }
+  corr_IF = setting.frequency_IF;
+  if (dynamic_spur_IF == corr_IF)
+    return;
+  dynamic_spur_IF = corr_IF;
   dynamic_spur_table_size = 0;
 //  dynamic_spur_table[dynamic_spur_table_size++] = 132000000;
 //  dynamic_spur_table[dynamic_spur_table_size++] = 153000000;
@@ -3362,7 +3370,7 @@ int avoid_spur(freq_t f)                   // find if this frequency should be a
 #ifdef TINYSA4
 #if 1
   if (!setting.auto_IF && setting.frequency_IF-2000000 < f && f < setting.frequency_IF -200000)
-    return true;
+    return F_AT_SPUR;
   if(config.frequency_IF1+200000 > f && config.frequency_IF1 < f+200000)
     return F_AT_SPUR;
 #endif
@@ -4090,7 +4098,7 @@ again:                                                              // Spur redu
 #ifdef __ULTRA__
 //    LO_harmonic = false;
 #endif
-    if (MODE_LOW(setting.mode)){                                       // All low mode
+    if (MODE_LOW(setting.mode) && !direct){                                       // All low input/output mode except direct that require setting of IF
       if (!setting.auto_IF)
         local_IF = setting.frequency_IF;
       else
@@ -4098,13 +4106,15 @@ again:                                                              // Spur redu
 #ifdef TINYSA4
         if (!hw_if && actual_rbw_x10 < RBW_FOR_STATIC_TABLE && setting.mode == M_LOW && lf > static_spur_table[0] -  RBW_FOR_STATIC_TABLE * 100)
           local_IF = spur_IF; // static spur table IF
-        else
-          local_IF = (hw_if? config.frequency_IF1 + 250000 : config.frequency_IF1);
+        else {
+          local_IF = (hw_if? config.frequency_IF1 - 500000 : config.frequency_IF1 - 500000);
+          setting.frequency_IF = local_IF;
+        }
 #else
         local_IF = DEFAULT_IF;
 #endif
       }
-      if (setting.mode == M_LOW && !direct) {
+      if (setting.mode == M_LOW) {       // Low input mode
         if (tracking) {                                // VERY SPECIAL CASE!!!!!   Measure BPF
 #if 0                                                               // Isolation test
           local_IF = lf;
@@ -4122,9 +4132,6 @@ again:                                                              // Spur redu
               setting.spur_removal= S_AUTO_OFF;
             }
           }
-#endif
-
-#ifdef __ULTRA__
           if (S_IS_AUTO(setting.below_IF)) {
             if ((freq_t)lf > MAX_ABOVE_IF_FREQ && lf <= ULTRA_MAX_FREQ && !LO_harmonic)
               setting.below_IF = S_AUTO_ON; // Only way to reach this range. Use below IF in harmonic mode
@@ -4153,16 +4160,13 @@ again:                                                              // Spur redu
                 setting.below_IF = S_AUTO_OFF;               // use below IF in second pass
               }
             }
-            else // if (setting.auto_IF)
+            else // if (setting.auto_IF)   // spur reduction is on and can not do above/below IF
             {
               if ((debug_avoid && debug_avoid_second) || spur_second_pass) {
 #ifdef TINYSA4
                 local_IF  = local_IF + DEFAULT_SPUR_OFFSET-(actual_rbw_x10 > 1000 ? 200000 : 0);    // apply IF spur shift
                 LO_spur_shifted = true;
-#ifdef TINYSA4
                 LO_shifting = true;
-#endif
-
               } else {
                 local_IF  = local_IF; // - (actual_rbw_x10 > 5000 ? 200000 : 0);// - DEFAULT_SPUR_OFFSET/2;    // apply IF spur shift
               }
@@ -4171,7 +4175,7 @@ again:                                                              // Spur redu
               }
 #endif
             }
-          } else {
+          } else {                  // No spur removal
             int spur_flag = avoid_spur(lf);
 #ifdef TINYSA4
             if(spur_flag) {         // check if alternate IF is needed to avoid spur.
@@ -4242,7 +4246,7 @@ again:                                                              // Spur redu
         if (setting.modulation == MO_EXTERNAL)    // VERY SPECIAL CASE !!!!!! LO input via high port
           local_IF += lf;
       }
-    } // --------------- END IF calculation ------------------------
+    } // --------------- END IF calculation ------------------------ all low input/output modes with IF setting
   TRACE(2);
     // ------------- Set LO ---------------------------
 
@@ -6778,10 +6782,10 @@ common_silent:
     setting.tracking = true; //Sweep BPF
     setting.auto_IF = false;
 #ifdef TINYSA4
-    setting.frequency_IF = config.frequency_IF1 + STATIC_DEFAULT_SPUR_OFFSET/3;  // This is the place where the inverted offset from the middle of the IF pass band is defined for normal mode.
+    setting.frequency_IF = config.frequency_IF1;  // Center on SAW filter
     set_refer_output(0);
 #else
-    setting.frequency_IF = DEFAULT_IF+210000;                // Center on SAW filters
+    setting.frequency_IF = DEFAULT_IF + 210000;                // Center on SAW filters
     set_refer_output(2);
 #endif
     markers[1].enabled = M_ENABLED;
