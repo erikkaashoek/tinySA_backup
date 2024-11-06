@@ -6520,7 +6520,7 @@ int validate_signal_within(int i, float margin)
     c_freq = LPF_TEST_FREQ;
 #endif
   test_fail_cause[i] = "Frequency ";
-  if (peakFreq < c_freq - 500000 || c_freq + 500000 < peakFreq )
+  if ((peakFreq < c_freq - 500000 || c_freq + 500000 < peakFreq) && setting.measurement != M_PASS_BAND)
     return TS_FAIL;
   test_fail_cause[i] = "";
   return TS_PASS;
