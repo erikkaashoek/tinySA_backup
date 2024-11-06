@@ -6283,7 +6283,7 @@ const test_case_t test_case [] =
  TEST_CASE_STRUCT(TC_SIGNAL,    TP_30MHZ_ULTRA, 30,    1,      CAL_LEVEL,    10,     -85),      // 4 Test Ultra mode
 #define TEST_SILENCE 4
  TEST_CASE_STRUCT(TC_BELOW,     TP_SILENT,      200,    100,    -70,    0,      0),         // 5  Wide band noise floor low mode
- TEST_CASE_STRUCT(TC_ABOVE,     TP_30MHZ_DIRECT,900,   10,    -60,    0,      -80),         // 6 Direct path with harmonic
+ TEST_CASE_STRUCT(TC_ABOVE,     TP_30MHZ_DIRECT,900,   10,    -90,    0,      -90),         // 6 Direct path with harmonic
  TEST_CASE_STRUCT(TC_SIGNAL,    TP_10MHZEXTRA,  30,     14,      CAL_LEVEL,    26,     -45),      // 7 BPF loss and stop band
  TEST_CASE_STRUCT(TC_FLAT,      TP_10MHZEXTRA,  30,     14,      -28,    9,     -60),       // 8 BPF pass band flatness
  TEST_CASE_STRUCT(TC_BELOW,     TP_15MHZ_LNA2,    855,    1,     -80,    0,      -80),       // 9 LPF cutoff
@@ -6377,14 +6377,20 @@ static freq_t spur_test_freq = 930000000;
 static freq_t direct_test_freq = 990000000; // 180000000;
 
 void determine_direct_test_freq(void) {
-  if (!hw_if)
-    return;
+  freq_t test_start, test_stop;
+  if (hw_if) {
+    test_start = 1020000000UL;
+    test_stop = 1100000000UL;
+  } else {
+    test_start = 930000000UL;
+    test_stop = 1050000000UL;
 
+  }
   int old_ultra = config.ultra;
   config.ultra = true;
   float max_level = -150;
   set_refer_output(0);
-  for (freq_t test_freq = 1020000000UL; test_freq < 1100000000UL; test_freq += 30000000) {
+  for (freq_t test_freq = test_start; test_freq < test_stop; test_freq += 30000000) {
     dirty = true;
     float v = PURE_TO_float(perform(false, 0, test_freq, false));
     if (v > max_level) {
