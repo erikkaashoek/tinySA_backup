@@ -563,7 +563,41 @@ touch_draw_test(void)
     }
   }while (!(btn_check() & EVT_BUTTON_SINGLE_CLICK));
 }
-
+#ifdef TINYSA4
+void
+touch_notepad(void)
+{
+  int x0, y0;
+  int x1, y1;
+  bool first = true;
+  ili9341_set_foreground(LCD_FG_COLOR);
+  ili9341_set_background(LCD_BG_COLOR);
+  ili9341_clear_screen();
+  ili9341_drawstring("TOUCH PANEL TO DRAW, PRESS JOG BUTTON TO CLEAR, RESTART TO EXIT", OFFSETX, LCD_HEIGHT - FONT_GET_HEIGHT);
+  lcd_set_font(FONT_SMALL);
+  while (true) {
+  do {
+    if (touch_check() == EVT_TOUCH_PRESSED){
+      if (first) {
+        ili9341_clear_screen();
+        first = false;
+      }
+      touch_position(&x0, &y0);
+      do {
+        chThdSleepMilliseconds(50);
+        touch_position(&x1, &y1);
+        ili9341_line(x0, y0, x1, y1);
+        x0 = x1;
+        y0 = y1;
+      } while (touch_check() != EVT_TOUCH_RELEASED);
+    }
+    }while (!(btn_check() & EVT_BUTTON_SINGLE_CLICK));
+    ili9341_clear_screen();
+    ili9341_drawstring("TOUCH PANEL TO DRAW, PRESS JOG BUTTON TO CLEAR, RESTART TO EXIT", OFFSETX, LCD_HEIGHT - FONT_GET_HEIGHT);
+    first = true;
+  }
+}
+#endif
 
 void
 touch_position(int *x, int *y)
@@ -2305,6 +2339,7 @@ static UI_FUNCTION_ADV_CALLBACK(menu_scanning_speed_acb)
 #define CONFIG_MENUITEM_SELFTEST    2
 #define CONFIG_MENUITEM_VERSION     3
 #define CONFIG_MENUITEM_CALIBRATE   4
+#define CONFIG_MENUITEM_NOTEPAD     5
 static UI_FUNCTION_CALLBACK(menu_config_cb)
 {
   (void)item;
@@ -2315,6 +2350,11 @@ static UI_FUNCTION_CALLBACK(menu_config_cb)
   case CONFIG_MENUITEM_TOUCH_TEST:
     touch_draw_test();
     break;
+#ifdef TINYSA4
+    case CONFIG_MENUITEM_NOTEPAD:
+    touch_notepad();
+    break;
+#endif
   case CONFIG_MENUITEM_SELFTEST:
     sweep_mode = 0;         // Suspend sweep to save time
     menu_move_back(true);
@@ -5045,6 +5085,9 @@ static const menuitem_t menu_connection[] = {
 const menuitem_t menu_touch[] = {
   { MT_CALLBACK, CONFIG_MENUITEM_TOUCH_CAL,  "TOUCH CAL",  menu_config_cb},
   { MT_CALLBACK, CONFIG_MENUITEM_TOUCH_TEST, "TOUCH TEST", menu_config_cb},
+#ifdef TINYSA4
+  { MT_CALLBACK, CONFIG_MENUITEM_NOTEPAD, "DRAWPAD", menu_config_cb},
+#endif
   { MT_NONE, 0, NULL, menu_back} // next-> menu_back
 };
 

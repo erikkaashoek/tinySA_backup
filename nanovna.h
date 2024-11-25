@@ -822,6 +822,7 @@ typedef struct config {
   float shift1_level_offset;
   float shift2_level_offset;
   float shift3_level_offset;
+  float shift4_level_offset;
   float drive1_level_offset;
   float drive2_level_offset;
   float drive3_level_offset;
@@ -1493,8 +1494,8 @@ typedef struct properties {
 
 //sizeof(properties_t) == 0x1200
 
-#define CONFIG_MAGIC  0x434f4e6b
-#define SETTING_MAGIC 0x434f4e6b
+#define CONFIG_MAGIC  0x434f4e6c
+#define SETTING_MAGIC 0x434f4e6c
 
 extern int16_t lastsaveid;
 //extern properties_t *active_props;

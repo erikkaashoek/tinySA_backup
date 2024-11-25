@@ -1836,7 +1836,7 @@ static void cell_draw_marker_info(int x0, int y0)
       j = 2;
       int xpos = 1 + (j%2)*(WIDTH/2) + CELLOFFSETX - x0;
       int ypos = 1 + (j/2)*(16) - y0;
-      cell_printf(xpos, ypos, FONT_s"OIP3: %4.1fdB", ip);
+      cell_printf(xpos, ypos, FONT_s"OIP3: %4.1fdBm", ip);
 #ifdef __LEVEL_METER__
       plot_printf(level_text, sizeof(level_text), "%4.1f", ip);
 #endif
@@ -1846,7 +1846,7 @@ static void cell_draw_marker_info(int x0, int y0)
       j = 3;
       xpos = 1 + (j%2)*(WIDTH/2) + CELLOFFSETX - x0;
       ypos = 1 + (j/2)*(16) - y0;
-      cell_printf(xpos, ypos, FONT_s"OIP3: %4.1fdB", ip);
+      cell_printf(xpos, ypos, FONT_s"OIP3: %4.1fdBm", ip);
       break;
     }
 #if 0

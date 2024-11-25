@@ -2190,14 +2190,14 @@ void calculate_step_delay(void)
       SI4432_step_delay   = step_delay_table[i].step_delay;
       SI4432_offset_delay = step_delay_table[i].offset_delay;
       spur_gate           = actual_rbw_x10 * (actual_rbw_x10 > 5000 ? (100/2) : 100);
-      if (spur_gate < 30000)
-        spur_gate = 30000;
+      if (spur_gate < 15000)
+        spur_gate = 15000;
 //      spur_gate           = step_delay_table[i].spur_div_1000 * 1000;
       noise_level         = step_delay_table[i].noise_level - PURE_TO_float(get_signal_path_loss());
       log_averaging_correction = step_delay_table[i].log_aver_correction;
 #endif
       if (setting.step_delay_mode == SD_PRECISE)    // In precise mode wait twice as long for RSSI to stabilize
-        SI4432_step_delay += (SI4432_step_delay>>2) ;
+        SI4432_step_delay += SI4432_step_delay ;
       if (setting.fast_speedup >0)
         SI4432_offset_delay = SI4432_step_delay / setting.fast_speedup;
       if (setting.faster_speedup >0)
@@ -2302,6 +2302,8 @@ pureRSSI_t get_frequency_correction(freq_t f)      // Frequency dependent RSSI c
           cv += float_TO_PURE_RSSI(config.drive2_level_offset);
         if (actual_drive >= 3)
           cv += float_TO_PURE_RSSI(config.drive3_level_offset);
+        if (f>MIN_BELOW_IF_FREQ)
+          cv += float_TO_PURE_RSSI(config.shift4_level_offset);
         if (f>MAX_ABOVE_IF_FREQ)
           cv += float_TO_PURE_RSSI(config.shift3_level_offset);
       }
@@ -3269,11 +3271,18 @@ void fill_spur_table(void)
 //  dynamic_spur_table[dynamic_spur_table_size++] = 174600000;
 //  dynamic_spur_table[dynamic_spur_table_size++] = 219000000;
   dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/4 -SPUR_FACTOR/2;
-  dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/4 -SPUR_FACTOR/2 + 60000;
-//  dynamic_spur_table[dynamic_spur_table_size++] = 266000000;
+  if (!hw_if)
+    dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/4 -SPUR_FACTOR/2 + 60000;
+  else
+    dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/4 - 400000;
+  dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/3 -SPUR_FACTOR/3;
   dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/2 -SPUR_FACTOR;
-  if (actual_rbw_x10 < 3000)
-      dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/2 -SPUR_FACTOR + 120000;
+  if (actual_rbw_x10 < 3000) {
+      if (!hw_if)
+        dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/2 -SPUR_FACTOR + 120000;
+      else
+        dynamic_spur_table[dynamic_spur_table_size++] = corr_IF/2 - 800000;
+  }
   dynamic_spur_table[dynamic_spur_table_size++] = corr_IF*2/3 -SPUR_FACTOR*2/3;
   spur_table = dynamic_spur_table;
   spur_table_size = dynamic_spur_table_size;
@@ -4109,6 +4118,7 @@ again:                                                              // Spur redu
         else {
           local_IF = (hw_if? config.frequency_IF1 - 500000 : config.frequency_IF1 - 500000);
           setting.frequency_IF = local_IF;
+          fill_spur_table();
         }
 #else
         local_IF = DEFAULT_IF;
@@ -4133,7 +4143,9 @@ again:                                                              // Spur redu
             }
           }
           if (S_IS_AUTO(setting.below_IF)) {
-            if ((freq_t)lf > MAX_ABOVE_IF_FREQ && lf <= ULTRA_MAX_FREQ && !LO_harmonic)
+            if (((freq_t)lf > MAX_ABOVE_IF_FREQ && lf <= ULTRA_MAX_FREQ && !LO_harmonic)
+                || (!in_calibration && hw_if && (((uint32_t)(lf>>2)+1000000) / 2000000 ==  ((uint32_t)local_IF+1000000)/2000000))     // Avoid IF harmonic spur
+                )
               setting.below_IF = S_AUTO_ON; // Only way to reach this range. Use below IF in harmonic mode
             else
               setting.below_IF = S_AUTO_OFF; // default is above IF, Use below IF in harmonic mode
@@ -4191,6 +4203,10 @@ again:                                                              // Spur redu
                   local_IF = local_IF;                          // No spur removal and no spur, center in IF
                 } else
 #endif
+                if(setting.below_IF == S_AUTO_OFF && lf < local_IF/2-10000000) {
+                  setting.below_IF = S_AUTO_ON;     // use below IF for lowest spurs
+                  local_IF = local_IF;
+                } else
                 if (setting.auto_IF) {
                   local_IF = local_IF + (actual_rbw_x10 > 2000  || hw_if ? DEFAULT_SPUR_OFFSET : DEFAULT_SPUR_OFFSET/2); // TODO find better way to shift spur away at large RBW/2;
                   //                if (actual_rbw_x10 == 6000 )
@@ -4336,7 +4352,7 @@ again:                                                              // Spur redu
               ADF4350_shift_ref(false);
             }
           } else
-          if (get_sweep_frequency(ST_SPAN)<5000000) { // When scanning less then 5MHz
+          if (get_sweep_frequency(ST_SPAN)<50000000) { // When scanning less then 5MHz
             if (actual_rbw_x10 <= 3000) {
               freq_t tf = ((lf + actual_rbw_x10*1000) / TXCO_DIV3) * TXCO_DIV3;
               if (tf + actual_rbw_x10*100 >= lf  && tf < lf + actual_rbw_x10*100) // 10MHz
@@ -4372,7 +4388,7 @@ again:                                                              // Spur redu
           } else if (lf < 25000000 && max2871) {
             ADF4351_R_counter(-1);
             ADF4351_modulo(200);
-          } else if (lf > 8000000  && !(lf > 1000000000 && hw_if) && MODE_INPUT(setting.mode)) {
+          } else if (lf > 8000000  && (lf < 1000000000 || max2871) && MODE_INPUT(setting.mode)) {
             if (local_modulo == 0) {
               if (max2871)
                 ADF4351_modulo(100);
@@ -5525,7 +5541,12 @@ static volatile int dummy;
 #ifdef __QUASI_PEAK__
         case AV_QUASI:
         { static float old_RSSI = -150.0;
-        if (i == 0) old_RSSI = trace_data[sweep_points-1];
+
+        if (setting.frequency_step == 0) {
+            if (i == 0) old_RSSI = trace_data[sweep_points-1];
+        } else {
+          old_RSSI = trace_data[i];
+        }
         if (RSSI_calc > old_RSSI && setting.attack > 1)
           old_RSSI += (RSSI_calc - old_RSSI)/setting.attack;
         else if (RSSI_calc < old_RSSI && setting.decay > 1)
@@ -6278,7 +6299,7 @@ const test_case_t test_case [] =
 #ifdef TINYSA4
 {//                 Condition   Preparation     Center  Span    Pass    Width(%)Stop
  TEST_CASE_STRUCT(TC_BELOW,     TP_SILENT,      0.06,  0.11,   -30,      0,      -30),         // 1 Zero Hz leakage
- TEST_CASE_STRUCT(TC_BELOW,     TP_SILENT,      0.1,   0.1,   -50,    0,      0),         // 2 Phase noise of zero Hz
+ TEST_CASE_STRUCT(TC_BELOW,     TP_SILENT,      0.1,   0.1,   -40,    0,      0),         // 2 Phase noise of zero Hz
  TEST_CASE_STRUCT(TC_SIGNAL,    TP_30MHZ,       30,     1,      CAL_LEVEL,   10,     -85),      // 3
  TEST_CASE_STRUCT(TC_SIGNAL,    TP_30MHZ_ULTRA, 30,    1,      CAL_LEVEL,    10,     -85),      // 4 Test Ultra mode
 #define TEST_SILENCE 4
@@ -7123,6 +7144,7 @@ quit:
     setting.stored[TRACE_TEMP] = true;
     setting.stored[TRACE_STORED2] = true;
     setting.below_IF = S_OFF;
+    shell_printf("IF = %D\r", setting.frequency_IF);
     freq_t f;
 #ifdef TINYSA4
     setting.frequency_step = 3000;
@@ -7162,7 +7184,7 @@ quit:
           cnt++;
           p = PURE_TO_float(perform(false, 1, f, false));
 #ifdef TINYSA4
-#define SPUR_DELTA  10
+#define SPUR_DELTA  15
 #else
 #define SPUR_DELTA  15
 #endif
@@ -7178,17 +7200,25 @@ quit:
     shell_printf("Freq(kHz), count, level(dBm), level with spur removal\n\r");
     in_selftest = false;
     setting.spur_removal = S_ON;
-    sort_spur_count();                  // Reduce table to most certain spurs
-    if (last_spur > MAX_DYNAMIC_SPUR_TABLE_SIZE)
-      last_spur = MAX_DYNAMIC_SPUR_TABLE_SIZE;
+
     sort_spur_level();                  // Reduce table to only strongest spurs
     if (last_spur > MAX_DYNAMIC_SPUR_TABLE_SIZE)
       last_spur = MAX_DYNAMIC_SPUR_TABLE_SIZE;
-    sort_spur_freq();
-//    dynamic_spur_table_size = 0;
+
     for (int j = 0; j < last_spur; j++) {
       if ((int)stored_t[j] >= 1 && j < MAX_DYNAMIC_SPUR_TABLE_SIZE && (int)stored_t[j] > SPUR_CHECK_COUNT-2 && stored_t[j] - stored2_t[j] > 2) {
         shell_printf("%d, %d, %4.2f, %4.2f\n\r", ((int)temp_t[j])/1000, (int)stored_t[j], stored2_t[j], PURE_TO_float(perform(false, 1, (freq_t)temp_t[j], false)));
+      }
+    }
+
+    sort_spur_count();                  // Reduce table to most certain spurs
+    if (last_spur > MAX_DYNAMIC_SPUR_TABLE_SIZE)
+      last_spur = MAX_DYNAMIC_SPUR_TABLE_SIZE;
+
+    sort_spur_freq();
+    //    dynamic_spur_table_size = 0;
+    for (int j = 0; j < last_spur; j++) {
+      if ((int)stored_t[j] >= 1 && j < MAX_DYNAMIC_SPUR_TABLE_SIZE && (int)stored_t[j] > SPUR_CHECK_COUNT-2 && stored_t[j] - stored2_t[j] > 2) {
         dynamic_spur_table[dynamic_spur_table_size++] = temp_t[j];
       }
     }
@@ -7713,13 +7743,13 @@ const int power_rbw [5] = { 100, 300, 30, 10, 3 };
 #ifdef TINYSA4
 
 #define JUMP_FREQS 7
-#define HARMONIC_JUMP   5
+#define HARMONIC_JUMP   JUMP_FREQS -1       // Must be last
 freq_t jump_freqs[JUMP_FREQS] = {LOW_SHIFT_FREQ, LOW_SHIFT_FREQ, DRIVE1_MAX_FREQ, DRIVE2_MAX_FREQ, 0, 0, 0};
 
 void set_jump_freq(freq_t a, freq_t b, freq_t c) {
   jump_freqs[4] = a;
   jump_freqs[5] = b;
-  jump_freqs[6] = c;
+  jump_freqs[6] = c;    // Harmonic
 }
 
 void set_jump_config(int i, float v) {
@@ -7737,12 +7767,13 @@ void set_jump_config(int i, float v) {
     config.drive3_level_offset = v;
     break;
   case 4:
-    config.shift3_level_offset = v;
+    config.shift3_level_offset = v; // MAX_ABOVE_IF_FREQ
     break;
   case 5:
-    config.harmonic_level_offset = v;
+    config.shift4_level_offset = v; // MIN_BELOW_IF_FREQ
     break;
   case 6:
+    config.harmonic_level_offset = v;   // Used in calibrate harmonic
     break;
   }
 }
@@ -7760,14 +7791,14 @@ float get_jump_config(int i) {
   case 4:
     return config.shift3_level_offset;
   case 5:
-    return config.harmonic_level_offset;
+    return config.shift4_level_offset;
   case 6:
-    return 0.0;
+    return config.harmonic_level_offset;   // Used in calibrate harmonic
   }
   return 0;
 }
 
-enum {CS_NORMAL, CS_LNA, CS_SWITCH, CS_ULTRA, CS_ULTRA_LNA, CS_DIRECT_REF, CS_DIRECT, CS_DIRECT_LNA, CS_SPUR_REF, CS_SPUR_ERROR, CS_HARMONIC, CS_HARMONIC_LNA, /* CS_BPF_REF, CS_BPF, */ CS_CORRECTION_REF, CS_CORRECTION_LNA, CS_MAX };
+enum {CS_NORMAL, CS_LNA, CS_SWITCH, CS_ULTRA, CS_ULTRA_LNA, CS_DIRECT_REF, CS_DIRECT, CS_DIRECT_LNA, CS_SPUR_REF, CS_SPUR_ERROR, CS_HARMONIC, CS_HARMONIC_LNA, /* CS_BPF_REF, CS_BPF, CS_CORRECTION_REF, CS_CORRECTION_LNA, */ CS_MAX };
 #define ULTRA_HARMONIC_CAL_FREQ 5340000000
 #else
 enum {CS_NORMAL, CS_SWITCH, CS_MAX };
@@ -7795,7 +7826,7 @@ void calibrate_harmonic(void)
     test_freq = jump_freqs[HARMONIC_JUMP];
     set_jump_config(HARMONIC_JUMP, -2);
     test_prepare(TEST_JUMP_HARMONIC);
-    set_RBW(1000);
+    set_RBW(6000);
 //    set_auto_reflevel(true);
     set_reflevel(-20);
     setting.repeat = 10;
@@ -7866,29 +7897,22 @@ void calibrate(void)
 
   setting.scale = 1;
   set_trace_scale(1);
-  for (int i =0; i<JUMP_FREQS-1; i++) { // Don't do harmonic
+  for (int i =0; i<HARMONIC_JUMP; i++) { // Don't do harmonic
     test_freq = jump_freqs[i];
     set_jump_config(i, -2);
     test_prepare(TEST_JUMP);
-    set_RBW(1000);
+    set_RBW(6000);
     set_auto_reflevel(true);
     setting.repeat = 10;
     //setting.scale = 1;
-    if (i == 5) {                       // Not used !!!!!
-      set_sweep_points(51);
-      set_sweep_frequency(ST_SPAN,    50);
-      setting.rbw_x10 = 3;
-      test_path = 3;      // Ultra lna path
-      force_signal_path = true;
-//      set_reflevel(-95);
-    } else if (i == 4) {
+    if (i == 4 || i == 5) {
 //        set_sweep_points(51);
         set_sweep_frequency(ST_SPAN,    1000);
         set_RBW(100);
 //        setting.rbw_x10 = 3;
         test_path = 3;      // Ultra lna path
         force_signal_path = true;
-        setting.spur_removal = S_OFF;
+//        setting.spur_removal = S_OFF;
 //        set_reflevel(-95);
     } else if (i <= 1) {
       if (i == 1)
@@ -7924,7 +7948,7 @@ void calibrate(void)
   reset_calibration();
   in_calibration = true;
 #ifdef TINYSA4
-  int current_correction_calibration = 0;
+  //int current_correction_calibration = 0;
 #endif
   for (calibration_stage = CS_NORMAL; calibration_stage < CS_MAX ; calibration_stage++) {
     for (int k = 0; k<3; k++) {     // max 3 retries
@@ -8005,6 +8029,7 @@ void calibrate(void)
         case CS_DIRECT_LNA:
           test_path = 5;      // Direct lna path at 900MHz
           goto direct_common;
+#if 1
         case CS_HARMONIC:
           test_path = 6;      // harmonic path
           force_signal_path = true;
@@ -8013,6 +8038,8 @@ void calibrate(void)
           test_path = 7;      // harmonic lna path
           force_signal_path = true;
           break;
+#endif
+#if 0
         case CS_CORRECTION_REF:
           if (!max2871)
             goto done;
@@ -8027,6 +8054,7 @@ void calibrate(void)
           force_signal_path = true;
           set_refer_output(2);
           break;
+#endif
 #endif
         }
         set_average(0, AV_100);
@@ -8097,6 +8125,7 @@ low_level:
           goto quit;
         }
 #ifdef TINYSA4
+#if 0
         if (calibration_stage == CS_CORRECTION_REF) {
           direct_level = marker_to_value(0);
         } else if (calibration_stage == CS_CORRECTION_LNA) {
@@ -8106,8 +8135,9 @@ low_level:
             current_correction_calibration++;
             calibration_stage -= 2;             // skip back to REF measurement
           }
-        }
-        else if (calibration_stage == CS_SPUR_REF)
+        } else
+#endif
+        if (calibration_stage == CS_SPUR_REF)
           direct_level = marker_to_value(0);                // Re-use direct_level;
         else if (calibration_stage == CS_SPUR_ERROR)
            config.shift_level_offset = direct_level -  marker_to_value(0);
@@ -8130,7 +8160,7 @@ low_level:
     }
   }
 #ifdef TINYSA4
-done:
+//done:
 #endif
   setting.below_IF = S_AUTO_OFF;
   in_calibration = false;
